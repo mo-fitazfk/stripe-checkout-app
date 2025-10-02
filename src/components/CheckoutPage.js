@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -25,18 +25,37 @@ const CheckoutPage = () => {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [product, setProduct] = useState(null);
+  const [productLoading, setProductLoading] = useState(true);
   const [customer, setCustomer] = useState({
     email: '',
     first_name: '',
     last_name: ''
   });
   const [promoCode, setPromoCode] = useState('');
-  
-  const product = {
-    name: 'Personal Coaching',
-    price: 99.99,
-    image: 'https://cdn.shopify.com/s/files/1/2320/2099/files/7daytrial_63c5bf6d-db02-4ed1-a163-85e74e1e31b9.jpg?v=1753162501'
-  };
+
+  // Fetch product details from Stripe
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const response = await axios.get('/api/product/prod_T9zGFxGJf9mTiI');
+        setProduct(response.data);
+      } catch (err) {
+        console.error('Error fetching product:', err);
+        // Fallback to default product if API fails
+        setProduct({
+          name: 'Personal Coaching',
+          price: 99.99,
+          image: 'https://cdn.shopify.com/s/files/1/2320/2099/files/7daytrial_63c5bf6d-db02-4ed1-a163-85e74e1e31b9.jpg?v=1753162501',
+          description: 'Transform your life with personal coaching'
+        });
+      } finally {
+        setProductLoading(false);
+      }
+    };
+
+    fetchProduct();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -49,7 +68,7 @@ const CheckoutPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     
-    if (!stripe || !elements) {
+    if (!stripe || !elements || !product) {
       return;
     }
 
@@ -64,6 +83,7 @@ const CheckoutPage = () => {
         metadata: {
           customer: JSON.stringify(customer),
           product_name: product.name,
+          product_id: product.id,
           quantity: '1',
           line_items: JSON.stringify([{
             title: product.name,
@@ -96,7 +116,8 @@ const CheckoutPage = () => {
           state: { 
             paymentIntentId: paymentIntent.id,
             amount: product.price,
-            customer: customer
+            customer: customer,
+            product: product
           }
         });
       }
@@ -106,6 +127,27 @@ const CheckoutPage = () => {
       setLoading(false);
     }
   };
+
+  if (productLoading) {
+    return (
+      <div className="checkout-container">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <div className="loading"></div>
+          <span>Loading product details...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="checkout-container">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <div>Failed to load product details. Please try again.</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="checkout-container">
