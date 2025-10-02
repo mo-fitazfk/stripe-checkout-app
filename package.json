@@ -2,13 +2,17 @@
   "name": "stripe-shopify-checkout",
   "version": "1.0.0",
   "description": "Stripe checkout with Shopify order creation",
-  "main": "server/index.js",
   "scripts": {
+    "build": "cd client && npm run build",
+    "start": "cd client && npm start",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
-    "build": "cd client && npm run build",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "dependencies": {
+    "stripe": "^14.7.0",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
