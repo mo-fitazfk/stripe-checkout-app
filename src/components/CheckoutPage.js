@@ -30,12 +30,12 @@ const CheckoutPage = () => {
     first_name: '',
     last_name: ''
   });
-  const [quantity, setQuantity] = useState(1);
+  const [promoCode, setPromoCode] = useState('');
   
   const product = {
-    name: 'Premium Product',
+    name: 'Personal Coaching',
     price: 99.99,
-    image: '🛍️'
+    image: 'https://cdn.shopify.com/s/files/1/2320/2099/files/7daytrial_63c5bf6d-db02-4ed1-a163-85e74e1e31b9.jpg?v=1753162501'
   };
 
   const handleInputChange = (e) => {
@@ -44,10 +44,6 @@ const CheckoutPage = () => {
       ...prev,
       [name]: value
     }));
-  };
-
-  const handleQuantityChange = (change) => {
-    setQuantity(prev => Math.max(1, prev + change));
   };
 
   const handleSubmit = async (event) => {
@@ -63,16 +59,16 @@ const CheckoutPage = () => {
     try {
       // Create payment intent
       const response = await axios.post('/api/create-payment-intent', {
-        amount: product.price * quantity,
+        amount: product.price,
         currency: 'usd',
         metadata: {
           customer: JSON.stringify(customer),
           product_name: product.name,
-          quantity: quantity.toString(),
+          quantity: '1',
           line_items: JSON.stringify([{
             title: product.name,
             price: product.price,
-            quantity: quantity
+            quantity: 1
           }])
         }
       });
@@ -99,7 +95,7 @@ const CheckoutPage = () => {
         navigate('/success', { 
           state: { 
             paymentIntentId: paymentIntent.id,
-            amount: product.price * quantity,
+            amount: product.price,
             customer: customer
           }
         });
@@ -113,97 +109,114 @@ const CheckoutPage = () => {
 
   return (
     <div className="checkout-container">
-      <h2>Complete Your Purchase</h2>
-      
-      <div className="product-card">
-        <div className="product-image">{product.image}</div>
-        <div className="product-details">
-          <h3 className="product-name">{product.name}</h3>
-          <p className="product-price">${product.price.toFixed(2)}</p>
-          <div className="quantity-controls">
-            <button 
-              className="quantity-btn" 
-              onClick={() => handleQuantityChange(-1)}
-              disabled={quantity <= 1}
-            >
-              -
-            </button>
-            <span className="quantity-display">{quantity}</span>
-            <button 
-              className="quantity-btn" 
-              onClick={() => handleQuantityChange(1)}
-            >
-              +
-            </button>
-          </div>
-        </div>
+      <div className="product-section">
+        <img 
+          src={product.image} 
+          alt={product.name}
+          className="product-image"
+        />
       </div>
-
-      <form onSubmit={handleSubmit} className="customer-form">
-        <h3>Customer Information</h3>
-        
-        <div className="form-group">
-          <label htmlFor="email">Email Address</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={customer.email}
-            onChange={handleInputChange}
-            required
-          />
+      
+      <div className="checkout-section">
+        <div className="checkout-header">
+          <h1 className="checkout-title">Create an account</h1>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="first_name">First Name</label>
+        <div className="promo-section">
+          <label className="promo-label">Promo Code</label>
           <input
             type="text"
-            id="first_name"
-            name="first_name"
-            value={customer.first_name}
-            onChange={handleInputChange}
-            required
+            className="promo-input"
+            placeholder="Enter promo code"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
           />
+          <button type="button" className="promo-button">Apply</button>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="last_name">Last Name</label>
-          <input
-            type="text"
-            id="last_name"
-            name="last_name"
-            value={customer.last_name}
-            onChange={handleInputChange}
-            required
-          />
+        <div className="social-login">
+          <button type="button" className="social-button">
+            Continue with Facebook
+          </button>
         </div>
 
-        <h3>Payment Information</h3>
-        <div className="form-group">
-          <label htmlFor="card-element">Card Details</label>
-          <div style={{ padding: '12px', border: '1px solid #ddd', borderRadius: '6px' }}>
-            <CardElement
-              id="card-element"
-              options={CARD_ELEMENT_OPTIONS}
+        <div className="divider">
+          <span>or</span>
+        </div>
+
+        <form onSubmit={handleSubmit} className="form-section">
+          <div className="form-group">
+            <label className="form-label">Sign up with email</label>
+            <input
+              type="email"
+              className="form-input"
+              placeholder="Email address"
+              name="email"
+              value={customer.email}
+              onChange={handleInputChange}
+              required
             />
           </div>
+
+          <div className="form-group">
+            <input
+              type="text"
+              className="form-input"
+              placeholder="First name"
+              name="first_name"
+              value={customer.first_name}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Last name"
+              name="last_name"
+              value={customer.last_name}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div className="card-section">
+            <div className="card-info">
+              Secure, fast checkout with Link<br/>
+              While entering card information, you'll be automatically advanced to the next form field when the current field is complete.
+            </div>
+            <div className="card-element">
+              <CardElement
+                options={CARD_ELEMENT_OPTIONS}
+              />
+            </div>
+            <div className="card-info">
+              Supported cards include Visa, Mastercard and American Express.
+            </div>
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <button 
+            type="submit" 
+            className="checkout-button"
+            disabled={!stripe || loading}
+          >
+            {loading && <span className="loading"></span>}
+            {loading ? 'Processing...' : `Pay $${product.price.toFixed(2)}`}
+          </button>
+
+          <div className="terms">
+            By providing your card information, you allow Transform by fitaz to charge your card for future payments in accordance with their terms.
+          </div>
+        </form>
+
+        <div className="login-link">
+          Already have an account? <a href="#login">Login</a>
         </div>
-
-        {error && <div className="error-message">{error}</div>}
-
-        <div className="total-section">
-          <h3>Total: <span className="total-amount">${(product.price * quantity).toFixed(2)}</span></h3>
-        </div>
-
-        <button 
-          type="submit" 
-          className="checkout-button"
-          disabled={!stripe || loading}
-        >
-          {loading && <span className="loading"></span>}
-          {loading ? 'Processing...' : `Pay $${(product.price * quantity).toFixed(2)}`}
-        </button>
-      </form>
+      </div>
     </div>
   );
 };

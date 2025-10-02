@@ -12,17 +12,12 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Stripe Checkout with Shopify</h1>
-      </header>
-      <main>
-        <Elements stripe={stripePromise}>
-          <Routes>
-            <Route path="/" element={<CheckoutPage />} />
-            <Route path="/success" element={<SuccessPage />} />
-          </Routes>
-        </Elements>
-      </main>
+      <Elements stripe={stripePromise}>
+        <Routes>
+          <Route path="/" element={<CheckoutPage />} />
+          <Route path="/success" element={<SuccessPage />} />
+        </Routes>
+      </Elements>
     </div>
   );
 }
