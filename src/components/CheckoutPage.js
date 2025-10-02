@@ -38,12 +38,16 @@ const CheckoutPage = () => {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
+        console.log('Fetching product from API...');
         const response = await axios.get('/api/product/prod_T9zGFxGJf9mTiI');
+        console.log('Product API response:', response.data);
         setProduct(response.data);
       } catch (err) {
         console.error('Error fetching product:', err);
+        console.log('Using fallback product data');
         // Fallback to default product if API fails
         setProduct({
+          id: 'prod_T9zGFxGJf9mTiI',
           name: 'Personal Coaching',
           price: 99.99,
           image: 'https://cdn.shopify.com/s/files/1/2320/2099/files/7daytrial_63c5bf6d-db02-4ed1-a163-85e74e1e31b9.jpg?v=1753162501',
