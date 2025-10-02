@@ -6,6 +6,14 @@
       "dest": "api/$1"
     },
     {
+      "src": "/static/(.*)",
+      "dest": "build/static/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg))",
+      "dest": "build/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "build/index.html"
     }
