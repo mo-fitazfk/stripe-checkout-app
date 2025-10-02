@@ -1,0 +1,276 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.App-header {
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+main {
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.checkout-container {
+  background: white;
+  color: #333;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+}
+
+.product-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: #f8f9fa;
+}
+
+.product-image {
+  width: 80px;
+  height: 80px;
+  background: #667eea;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.product-details {
+  flex: 1;
+  text-align: left;
+}
+
+.product-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.product-price {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #667eea;
+  margin: 0;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.quantity-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quantity-btn:hover {
+  background: #5a6fd8;
+}
+
+.quantity-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.quantity-display {
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+}
+
+.customer-form {
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.checkout-button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+}
+
+.checkout-button:hover {
+  background: #5a6fd8;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+}
+
+.checkout-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.total-section {
+  border-top: 2px solid #e1e5e9;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+.total-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.success-page {
+  background: white;
+  color: #333;
+  border-radius: 12px;
+  padding: 3rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.success-icon {
+  font-size: 4rem;
+  color: #28a745;
+  margin-bottom: 1rem;
+}
+
+.success-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.success-message {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.back-button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: #5a6fd8;
+  transform: translateY(-2px);
+}
+
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 0.5rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 6px;
+  margin: 1rem 0;
+  border: 1px solid #f5c6cb;
+}
+
+@media (max-width: 768px) {
+  .App-header h1 {
+    font-size: 2rem;
+  }
+  
+  .checkout-container {
+    padding: 1rem;
+    margin: 1rem;
+  }
+  
+  .product-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .product-details {
+    text-align: center;
+  }
+}
