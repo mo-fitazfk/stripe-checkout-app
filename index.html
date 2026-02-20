@@ -21,15 +21,22 @@
       font-style: normal;
       font-display: swap;
     }
+    @font-face {
+      font-family: 'General Sans Medium';
+      src: url('https://cdn.shopify.com/s/files/1/2320/2099/files/GeneralSans-Medium_1.woff2?v=1756082377') format('woff2');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { overflow-x: hidden; overflow-y: auto; min-height: 100vh; font-family: 'General Sans', sans-serif; color: #817364; }
     .pricing-section { display: flex; justify-content: center; min-height: 100vh; font-family: 'General Sans', sans-serif; }
     .pricing-section h2 { font-family: 'Cambon', serif; font-size: 1.4rem; margin-bottom: 8px; font-weight: 600; color: #422112; }
     .pricing-container { display: flex; flex-wrap: wrap; width: 100%; min-height: 100vh; }
-    .plan-box { flex: 1 1 40%; min-width: 400px; padding: 20px 40px 40px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .plan-box { flex: 1 1 40%; min-width: 400px; padding: 20px 40px 40px; display: flex; flex-direction: column; justify-content: flex-start; font-family: 'General Sans', sans-serif; }
     .divider { width: 100px; height: 3px; background: #FF9DDD; margin-bottom: 20px; }
     .pricing-section h3 { font-family: 'General Sans', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: #422112; text-align: center; }
-    .subtext { color: #817364; font-size: 0.95rem; margin-bottom: 30px; text-align: center; }
+    .subtext { font-family: 'General Sans', sans-serif; color: #817364; font-size: 0.95rem; margin-bottom: 30px; text-align: center; }
     .pricing-options { display: flex; flex-direction: column; gap: 15px; }
     .pricing-card { background: transparent; border: 2px solid #e2e8f0; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.3s ease; position: relative; }
     .pricing-card:hover { border-color: #FF9DDD; transform: translateY(-2px); }
@@ -44,14 +51,15 @@
     .unselected-content .plan-name { font-size: 1.2rem; font-weight: 600; color: #422112; }
     .best-value { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #FF9DDD; color: white; font-weight: 700; font-size: 0.9rem; padding: 6px 16px; border-radius: 20px; white-space: nowrap; }
     .card-header { display: flex; justify-content: space-between; align-items: center; }
-    .card-header h4 { font-size: 1.2rem; margin: 0; }
-    .save { color: #FF9DDD; font-weight: 700; }
+    .card-header h4 { font-family: 'General Sans Medium', sans-serif; font-size: 1.2rem; margin: 0; }
+    .save { font-family: 'General Sans', sans-serif; color: #FF9DDD; font-weight: 700; }
     .price-details { margin-top: 20px; }
     .price-row { display: flex; justify-content: space-between; align-items: flex-end; }
     .price-info { display: flex; flex-direction: column; }
-    .price-label { font-size: 0.9rem; color: #817364; text-transform: uppercase; margin-bottom: 5px; }
-    .price-amount { font-size: 1.5rem; font-weight: 700; color: #422112; }
-    .cta-button { width: 100%; padding: 12px 20px; background: #ed4580; color: white; border: none; border-radius: 360px; font-size: 16px; font-weight: 500; cursor: pointer; margin-top: 24px; height: 48px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
+    .price-label { font-family: 'General Sans', sans-serif; font-size: 0.9rem; color: #817364; text-transform: uppercase; margin-bottom: 5px; }
+    .price-amount { font-family: 'General Sans', sans-serif; font-size: 1.5rem; font-weight: 700; color: #422112; }
+    .unselected-content .plan-name { font-family: 'General Sans', sans-serif; }
+    .cta-button { font-family: 'General Sans', sans-serif; width: 100%; padding: 12px 20px; background: #ed4580; color: white; border: none; border-radius: 360px; font-size: 16px; font-weight: 500; cursor: pointer; margin-top: 24px; height: 48px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
     .cta-button:hover { transform: translateY(-1px); }
     .cta-button:disabled { opacity: 0.7; cursor: not-allowed; }
     .image-box { flex: 1 1 60%; min-width: 500px; background: #e0f4ff; display: flex; align-items: center; justify-content: center; }
@@ -59,8 +67,8 @@
     .choose-plan-step { display: none; }
     .choose-plan-step.active { display: flex; flex: 1 1 100%; flex-wrap: wrap; width: 100%; min-height: 100vh; }
     .choose-plan-step-2 .plan-box { max-width: 100%; }
-    .step-2-header { margin-bottom: 16px; font-size: 1.25rem; color: #422112; }
-    .back-link { display: inline-block; margin-bottom: 16px; color: #ed4580; cursor: pointer; text-decoration: underline; }
+    .step-2-header { font-family: 'General Sans', sans-serif; margin-bottom: 16px; font-size: 1.25rem; color: #422112; }
+    .back-link { font-family: 'General Sans', sans-serif; display: inline-block; margin-bottom: 16px; color: #ed4580; cursor: pointer; text-decoration: underline; }
     .back-link:hover { color: #422112; }
     #stripe-embed-container { width: 100%; min-height: 400px; }
     .error-msg { color: #c00; margin-top: 12px; font-size: 0.9rem; }
