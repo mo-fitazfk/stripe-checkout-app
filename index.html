@@ -185,7 +185,9 @@
         el.style.display = msg ? 'block' : 'none';
       }
 
-      document.getElementById('continue-btn').addEventListener('click', function() {
+      document.getElementById('continue-btn').addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
         var btn = this;
         btn.disabled = true;
         showError('');
