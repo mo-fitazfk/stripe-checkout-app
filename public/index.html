@@ -4,15 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Choose your plan</title>
+  <link rel="preload" href="https://cdn.shopify.com/s/files/1/2320/2099/files/Cambon-Regular_2.woff2?v=1756082377" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="https://cdn.shopify.com/s/files/1/2320/2099/files/GeneralSans-Medium_1.woff2?v=1756082377" as="font" type="font/woff2" crossorigin>
   <style>
+    @font-face {
+      font-family: 'Cambon';
+      src: url('https://cdn.shopify.com/s/files/1/2320/2099/files/Cambon-Regular_2.woff2?v=1756082377') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'General Sans';
+      src: url('https://cdn.shopify.com/s/files/1/2320/2099/files/GeneralSans-Medium_1.woff2?v=1756082377') format('woff2');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { overflow-x: hidden; overflow-y: auto; min-height: 100vh; font-family: 'General Sans', -apple-system, sans-serif; color: #817364; }
-    .pricing-section { display: flex; justify-content: center; min-height: 100vh; }
+    html, body { overflow-x: hidden; overflow-y: auto; min-height: 100vh; font-family: 'General Sans', sans-serif; color: #817364; }
+    .pricing-section { display: flex; justify-content: center; min-height: 100vh; font-family: 'General Sans', sans-serif; }
+    .pricing-section h2 { font-family: 'Cambon', serif; font-size: 1.4rem; margin-bottom: 8px; font-weight: 600; color: #422112; }
     .pricing-container { display: flex; flex-wrap: wrap; width: 100%; min-height: 100vh; }
     .plan-box { flex: 1 1 40%; min-width: 400px; padding: 20px 40px 40px; display: flex; flex-direction: column; justify-content: flex-start; }
-    .pricing-section h2 { font-size: 1.4rem; margin-bottom: 8px; font-weight: 600; color: #422112; }
     .divider { width: 100px; height: 3px; background: #FF9DDD; margin-bottom: 20px; }
-    .pricing-section h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: #422112; text-align: center; }
+    .pricing-section h3 { font-family: 'General Sans', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: #422112; text-align: center; }
     .subtext { color: #817364; font-size: 0.95rem; margin-bottom: 30px; text-align: center; }
     .pricing-options { display: flex; flex-direction: column; gap: 15px; }
     .pricing-card { background: transparent; border: 2px solid #e2e8f0; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.3s ease; position: relative; }
