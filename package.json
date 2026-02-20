@@ -1,0 +1,13 @@
+{
+  "name": "stripe-checkout-app",
+  "version": "1.0.0",
+  "description": "Stripe Embedded Checkout - choose plan + payment (EvolveYou-style)",
+  "main": "api/create-checkout-session.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "stripe": "^14.0.0"
+  }
+}

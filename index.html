@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose your plan</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { overflow-x: hidden; overflow-y: auto; min-height: 100vh; font-family: 'General Sans', -apple-system, sans-serif; color: #817364; }
+    .pricing-section { display: flex; justify-content: center; min-height: 100vh; }
+    .pricing-container { display: flex; flex-wrap: wrap; width: 100%; min-height: 100vh; }
+    .plan-box { flex: 1 1 40%; min-width: 400px; padding: 20px 40px 40px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .pricing-section h2 { font-size: 1.4rem; margin-bottom: 8px; font-weight: 600; color: #422112; }
+    .divider { width: 100px; height: 3px; background: #FF9DDD; margin-bottom: 20px; }
+    .pricing-section h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: #422112; text-align: center; }
+    .subtext { color: #817364; font-size: 0.95rem; margin-bottom: 30px; text-align: center; }
+    .pricing-options { display: flex; flex-direction: column; gap: 15px; }
+    .pricing-card { background: transparent; border: 2px solid #e2e8f0; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.3s ease; position: relative; }
+    .pricing-card:hover { border-color: #FF9DDD; transform: translateY(-2px); }
+    .pricing-card.active { border-color: #8B4513; border-width: 3px; color: #422112; }
+    .pricing-card[data-plan="yearly"]:not(.active) .card-header, .pricing-card[data-plan="yearly"]:not(.active) .save, .pricing-card[data-plan="yearly"]:not(.active) .price-row { display: none; }
+    .pricing-card[data-plan="yearly"]:not(.active) .unselected-content { display: flex; justify-content: space-between; align-items: center; }
+    .pricing-card[data-plan="yearly"].active .unselected-content { display: none; }
+    .pricing-card[data-plan="monthly"]:not(.active) .card-header, .pricing-card[data-plan="monthly"]:not(.active) .price-row { display: none; }
+    .pricing-card[data-plan="monthly"]:not(.active) .unselected-content { display: flex; justify-content: space-between; align-items: center; }
+    .pricing-card[data-plan="monthly"].active .unselected-content { display: none; }
+    .unselected-content .price-amount { font-size: 1.5rem; font-weight: 700; color: #422112; }
+    .unselected-content .plan-name { font-size: 1.2rem; font-weight: 600; color: #422112; }
+    .best-value { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #FF9DDD; color: white; font-weight: 700; font-size: 0.9rem; padding: 6px 16px; border-radius: 20px; white-space: nowrap; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; }
+    .card-header h4 { font-size: 1.2rem; margin: 0; }
+    .save { color: #FF9DDD; font-weight: 700; }
+    .price-details { margin-top: 20px; }
+    .price-row { display: flex; justify-content: space-between; align-items: flex-end; }
+    .price-info { display: flex; flex-direction: column; }
+    .price-label { font-size: 0.9rem; color: #817364; text-transform: uppercase; margin-bottom: 5px; }
+    .price-amount { font-size: 1.5rem; font-weight: 700; color: #422112; }
+    .cta-button { width: 100%; padding: 12px 20px; background: #ed4580; color: white; border: none; border-radius: 360px; font-size: 16px; font-weight: 500; cursor: pointer; margin-top: 24px; height: 48px; text-transform: uppercase; display: flex; align-items: center; justify-content: center; }
+    .cta-button:hover { transform: translateY(-1px); }
+    .cta-button:disabled { opacity: 0.7; cursor: not-allowed; }
+    .image-box { flex: 1 1 60%; min-width: 500px; background: #e0f4ff; display: flex; align-items: center; justify-content: center; }
+    .image-box img { width: 100%; height: 100%; object-fit: cover; }
+    .choose-plan-step { display: none; }
+    .choose-plan-step.active { display: flex; flex: 1 1 100%; flex-wrap: wrap; width: 100%; min-height: 100vh; }
+    .choose-plan-step-2 .plan-box { max-width: 100%; }
+    .step-2-header { margin-bottom: 16px; font-size: 1.25rem; color: #422112; }
+    .back-link { display: inline-block; margin-bottom: 16px; color: #ed4580; cursor: pointer; text-decoration: underline; }
+    .back-link:hover { color: #422112; }
+    #stripe-embed-container { width: 100%; min-height: 400px; }
+    .error-msg { color: #c00; margin-top: 12px; font-size: 0.9rem; }
+    @media (max-width: 900px) {
+      .pricing-container { flex-direction: column; }
+      .plan-box { min-width: auto; order: 2; padding: 20px; }
+      .image-box { order: 1; height: 50vh; min-width: auto; flex: none; }
+    }
+    @media (max-width: 480px) {
+      .plan-box { padding: 30px 20px; }
+      .image-box { height: 40vh; }
+    }
+  </style>
+</head>
+<body>
+  <section class="pricing-section">
+    <div class="pricing-container">
+      <!-- Step 1: Choose plan -->
+      <div id="step-1" class="choose-plan-step choose-plan-step-1 active">
+        <div class="plan-box">
+          <h2>Choose your plan</h2>
+          <div class="divider"></div>
+          <h3>7 Day Free Trial</h3>
+          <p class="subtext">You won't be charged until your trial ends. Cancel anytime.</p>
+          <div class="pricing-options">
+            <div class="pricing-card active" data-plan="yearly" onclick="selectPlan('yearly')">
+              <div class="best-value">BEST VALUE</div>
+              <div class="card-header">
+                <h4>Yearly</h4>
+                <span class="save">SAVE 30%</span>
+              </div>
+              <div class="price-details">
+                <div class="price-row">
+                  <div class="price-info">
+                    <div class="price-label" style="text-decoration: line-through; opacity: 0.6;">A$199 BILLED</div>
+                    <div class="price-label" style="color: #FF9DDD; font-weight: 700;">A$139.30 BILLED</div>
+                    <div class="price-label">YEARLY AFTER TRIAL</div>
+                  </div>
+                  <div class="price-info">
+                    <div class="price-amount">A$11.6</div>
+                    <div class="price-label">PER MONTH</div>
+                  </div>
+                </div>
+                <div class="unselected-content">
+                  <div class="plan-name">Yearly</div>
+                  <div class="price-amount">A$11.6/month</div>
+                </div>
+              </div>
+            </div>
+            <div class="pricing-card" data-plan="monthly" onclick="selectPlan('monthly')">
+              <div class="card-header"><h4>Monthly</h4></div>
+              <div class="price-details">
+                <div class="price-row">
+                  <div class="price-info">
+                    <div class="price-label">A$39 BILLED</div>
+                    <div class="price-label">MONTHLY</div>
+                  </div>
+                  <div class="price-info">
+                    <div class="price-amount">A$39</div>
+                    <div class="price-label">PER MONTH</div>
+                  </div>
+                </div>
+                <div class="unselected-content">
+                  <div class="plan-name">Monthly</div>
+                  <div class="price-amount">A$39/month</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="cta-button" id="continue-btn">Continue</button>
+          <div id="step1-error" class="error-msg" style="display: none;"></div>
+        </div>
+        <div class="image-box">
+          <img src="https://cdn.shopify.com/s/files/1/2320/2099/files/231208_TRANSFORM22441_4.jpg?v=1769565606" alt="FitAz Transform">
+        </div>
+      </div>
+
+      <!-- Step 2: Payment (Stripe Embedded Checkout) -->
+      <div id="step-2" class="choose-plan-step choose-plan-step-2">
+        <div class="plan-box">
+          <a role="button" class="back-link" id="back-link" tabindex="0">← Back to plan</a>
+          <h2 class="step-2-header">Enter payment details</h2>
+          <div id="stripe-embed-container"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    (function() {
+      var selectedPlan = 'yearly';
+      var cachedPublishableKey = null;
+      function getPublishableKey() {
+        if (cachedPublishableKey) return Promise.resolve(cachedPublishableKey);
+        return fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
+          cachedPublishableKey = data.publishableKey || '';
+          return cachedPublishableKey;
+        });
+      }
+
+      function selectPlan(plan) {
+        selectedPlan = plan;
+        document.querySelectorAll('.pricing-card').forEach(function(card) {
+          card.classList.remove('active');
+        });
+        document.querySelector('[data-plan="' + plan + '"]').classList.add('active');
+      }
+
+      function showStep(stepNum) {
+        document.getElementById('step-1').classList.toggle('active', stepNum === 1);
+        document.getElementById('step-2').classList.toggle('active', stepNum === 2);
+      }
+
+      function showError(msg) {
+        var el = document.getElementById('step1-error');
+        el.textContent = msg || '';
+        el.style.display = msg ? 'block' : 'none';
+      }
+
+      document.getElementById('continue-btn').addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        showError('');
+        fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan: selectedPlan })
+        })
+          .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+          .then(function(result) {
+            if (!result.ok) {
+              showError(result.data.error || 'Something went wrong.');
+              btn.disabled = false;
+              return;
+            }
+            var clientSecret = result.data.client_secret;
+            if (!clientSecret) {
+              showError('No checkout session received.');
+              btn.disabled = false;
+              return;
+            }
+            showStep(2);
+            btn.disabled = false;
+            getPublishableKey().then(function(key) {
+              if (!key) {
+                document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">Set STRIPE_PUBLISHABLE_KEY in Vercel env (see README).</p>';
+                return;
+              }
+              var stripe = Stripe(key);
+              var fetchClientSecret = function() { return Promise.resolve(clientSecret); };
+              stripe.initEmbeddedCheckout({ fetchClientSecret: fetchClientSecret })
+                .then(function(checkout) {
+                  checkout.mount('#stripe-embed-container');
+                })
+                .catch(function(err) {
+                  document.getElementById('stripe-embed-container').innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
+                });
+            }).catch(function() {
+              document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">Could not load Stripe config.</p>';
+            });
+          })
+          .catch(function(err) {
+            showError('Network error. Please try again.');
+            btn.disabled = false;
+          });
+      });
+
+      document.getElementById('back-link').addEventListener('click', function() {
+        showStep(1);
+        document.getElementById('stripe-embed-container').innerHTML = '';
+      });
+      document.getElementById('back-link').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.click();
+        }
+      });
+
+      window.selectPlan = selectPlan;
+    })();
+  </script>
+</body>
+</html>
