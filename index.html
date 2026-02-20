@@ -165,7 +165,10 @@
       var cachedPublishableKey = null;
       function getPublishableKey() {
         if (cachedPublishableKey) return Promise.resolve(cachedPublishableKey);
-        return fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
+        return fetch('/api/config').then(function(r) {
+          if (!r.ok) return Promise.reject(new Error('Config returned ' + r.status));
+          return r.json();
+        }).then(function(data) {
           cachedPublishableKey = data.publishableKey || '';
           return cachedPublishableKey;
         });
@@ -228,8 +231,11 @@
                 .catch(function(err) {
                   document.getElementById('stripe-embed-container').innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
                 });
-            }).catch(function() {
-              document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">Could not load Stripe config.</p>';
+            }).catch(function(err) {
+              var msg = 'Could not load Stripe config. ';
+              if (err && err.message) msg += err.message + '. ';
+              msg += 'Set STRIPE_PUBLISHABLE_KEY or REACT_APP_STRIPE_PUBLISHABLE_KEY in Vercel and ensure /api/config is reachable.';
+              document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">' + msg + '</p>';
             });
           })
           .catch(function(err) {
