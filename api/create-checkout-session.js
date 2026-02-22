@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       ui_mode: 'embedded',
-      payment_method_types: ['card', 'apple_pay', 'google_pay'],
+      payment_method_types: ['card', 'link'],
       line_items: [
         {
           price_data: {
