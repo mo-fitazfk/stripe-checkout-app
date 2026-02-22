@@ -68,11 +68,7 @@
     .back-link { font-family: 'General Sans', sans-serif; display: none; margin-bottom: 16px; color: #ed4580; cursor: pointer; text-decoration: underline; }
     .back-link:hover { color: #422112; }
     #stripe-embed-container { width: 100%; min-height: 400px; display: none; }
-    .payment-visible .plan-box .plan-choice-block { display: none !important; }
-    .payment-visible .plan-box .back-link { display: inline-block !important; }
-    .payment-visible .plan-box #stripe-embed-container { display: block !important; }
-    .payment-visible .image-box { display: none !important; }
-    .payment-visible .plan-box { flex: 1 1 100%; max-width: 100%; }
+    .embed-visible .plan-box #stripe-embed-container { display: block !important; }
     .error-msg { color: #c00; margin-top: 12px; font-size: 0.9rem; }
     @media (max-width: 900px) {
       .pricing-container { flex-direction: column; }
@@ -175,8 +171,8 @@
         document.querySelector('[data-plan="' + plan + '"]').classList.add('active');
       }
 
-      function showPayment(show) {
-        document.getElementById('pricing-section').classList.toggle('payment-visible', show);
+      function showEmbed(show) {
+        document.getElementById('pricing-section').classList.toggle('embed-visible', show);
       }
 
       function showError(msg) {
@@ -209,7 +205,7 @@
               btn.disabled = false;
               return;
             }
-            showPayment(true);
+            showEmbed(true);
             btn.disabled = false;
             getPublishableKey().then(function(key) {
               if (!key) {
@@ -236,17 +232,6 @@
             showError('Network error. Please try again.');
             btn.disabled = false;
           });
-      });
-
-      document.getElementById('back-link').addEventListener('click', function() {
-        showPayment(false);
-        document.getElementById('stripe-embed-container').innerHTML = '';
-      });
-      document.getElementById('back-link').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          this.click();
-        }
       });
 
       window.selectPlan = selectPlan;
