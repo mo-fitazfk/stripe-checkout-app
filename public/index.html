@@ -79,6 +79,10 @@
     .progress-segment.step-2.filled { background: #ed4580; }
     .step-payment .plan-box .progress-segment.step-2 { background: #ed4580; }
     .progress-labels { display: flex; justify-content: space-between; font-family: 'General Sans', sans-serif; font-size: 0.75rem; color: #817364; margin-top: 4px; }
+    .selection-summary { display: none; background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-family: 'General Sans', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .step-payment .plan-box .selection-summary { display: block !important; }
+    .selection-summary .summary-plan { font-size: 18px; font-weight: 600; color: #422112; margin: 0 0 4px 0; }
+    .selection-summary .summary-today { font-size: 18px; color: #422112; margin: 0; }
     #stripe-embed-container { width: 100%; min-height: 400px; display: none; }
     .step-payment .plan-box .plan-choice-block { display: none !important; }
     .step-payment .plan-box #stripe-embed-container { display: block !important; }
@@ -165,6 +169,10 @@
           <button type="button" class="cta-button" id="continue-btn">Continue</button>
           <div id="step1-error" class="error-msg" style="display: none;"></div>
         </div>
+        <div class="selection-summary" id="selection-summary" aria-hidden="true">
+          <p class="summary-plan" id="summary-plan">Yearly</p>
+          <div><p class="summary-today" id="summary-today">A$0.00 Today</p></div>
+        </div>
         <div id="stripe-embed-container"></div>
       </div>
       <div class="image-box">
@@ -202,6 +210,13 @@
         var seg2 = document.getElementById('progress-step-2');
         section.classList.toggle('step-payment', show);
         if (seg2) seg2.classList.toggle('filled', show);
+        if (show) {
+          var planLabel = selectedPlan === 'yearly' ? 'Yearly' : 'Monthly';
+          var planEl = document.getElementById('summary-plan');
+          var todayEl = document.getElementById('summary-today');
+          if (planEl) planEl.textContent = planLabel;
+          if (todayEl) todayEl.textContent = 'A$0.00 Today';
+        }
       }
 
       function showError(msg) {

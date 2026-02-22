@@ -35,6 +35,7 @@ module.exports = async (req, res) => {
   }
 
   const priceId = plan === 'yearly' ? priceYearly : priceMonthly;
+  const planName = plan === 'yearly' ? 'Yearly' : 'Monthly';
 
   const stripe = new Stripe(stripeSecretKey);
 
@@ -43,12 +44,26 @@ module.exports = async (req, res) => {
   const returnUrl = `${baseUrl}/?session_id={CHECKOUT_SESSION_ID}&success=1`;
 
   try {
+    const price = await stripe.prices.retrieve(priceId);
+    const unitAmount = price.unit_amount;
+    const currency = (price.currency || 'aud').toLowerCase();
+    const interval = price.recurring && price.recurring.interval ? price.recurring.interval : (plan === 'yearly' ? 'year' : 'month');
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       ui_mode: 'embedded',
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency,
+            product_data: {
+              name: planName,
+              description: '',
+              images: [],
+            },
+            unit_amount: unitAmount,
+            recurring: { interval },
+          },
           quantity: 1,
         },
       ],
