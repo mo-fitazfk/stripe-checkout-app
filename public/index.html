@@ -65,10 +65,25 @@
     .cta-button:disabled { opacity: 0.7; cursor: not-allowed; }
     .image-box { flex: 1 1 60%; min-width: 500px; background: #e0f4ff; display: flex; align-items: center; justify-content: center; }
     .image-box img { width: 100%; height: 100%; object-fit: cover; }
-    .back-link { font-family: 'General Sans', sans-serif; display: none; margin-bottom: 16px; color: #ed4580; cursor: pointer; text-decoration: underline; }
+    .step-header { margin-bottom: 20px; }
+    .back-link { font-family: 'General Sans', sans-serif; display: none; margin-bottom: 12px; color: #ed4580; cursor: pointer; text-decoration: underline; font-size: 0.95rem; }
     .back-link:hover { color: #422112; }
+    .step-payment .plan-box .back-link { display: inline-block !important; }
+    .heading-step { font-family: 'Cambon', serif; font-size: 1.4rem; font-weight: 600; color: #422112; margin-bottom: 8px; }
+    .heading-step.heading-payment { display: none; }
+    .step-payment .plan-box .heading-step.heading-plan { display: none !important; }
+    .step-payment .plan-box .heading-step.heading-payment { display: block !important; }
+    .progress-bar { display: flex; gap: 4px; width: 100%; margin-top: 12px; margin-bottom: 4px; }
+    .progress-segment { flex: 1; height: 6px; border-radius: 3px; background: #e2e8f0; transition: background 0.3s ease; }
+    .progress-segment.step-1 { background: #ed4580; }
+    .progress-segment.step-2.filled { background: #ed4580; }
+    .step-payment .plan-box .progress-segment.step-2 { background: #ed4580; }
+    .progress-labels { display: flex; justify-content: space-between; font-family: 'General Sans', sans-serif; font-size: 0.75rem; color: #817364; margin-top: 4px; }
     #stripe-embed-container { width: 100%; min-height: 400px; display: none; }
-    .embed-visible .plan-box #stripe-embed-container { display: block !important; }
+    .step-payment .plan-box .plan-choice-block { display: none !important; }
+    .step-payment .plan-box #stripe-embed-container { display: block !important; }
+    .step-payment .image-box { display: none !important; }
+    .step-payment .plan-box { flex: 1 1 100%; max-width: 100%; }
     .error-msg { color: #c00; margin-top: 12px; font-size: 0.9rem; }
     @media (max-width: 900px) {
       .pricing-container { flex-direction: column; }
@@ -85,8 +100,20 @@
   <section class="pricing-section" id="pricing-section">
     <div class="pricing-container">
       <div class="plan-box">
+        <div class="step-header">
+          <a role="button" class="back-link" id="back-link" tabindex="0">← Back</a>
+          <h2 class="heading-step heading-plan" id="heading-plan">Choose your plan</h2>
+          <h2 class="heading-step heading-payment" id="heading-payment">Payment</h2>
+          <div class="progress-bar">
+            <div class="progress-segment step-1" aria-label="Plan selection"></div>
+            <div class="progress-segment step-2" id="progress-step-2" aria-label="Payment"></div>
+          </div>
+          <div class="progress-labels">
+            <span>Plan selection</span>
+            <span>Payment</span>
+          </div>
+        </div>
         <div class="plan-choice-block">
-          <h2>Choose your plan</h2>
           <div class="divider"></div>
           <h3>7 Day Free Trial</h3>
           <p class="subtext">You won't be charged until your trial ends. Cancel anytime.</p>
@@ -138,7 +165,6 @@
           <button type="button" class="cta-button" id="continue-btn">Continue</button>
           <div id="step1-error" class="error-msg" style="display: none;"></div>
         </div>
-        <a role="button" class="back-link" id="back-link" tabindex="0">← Back to plan</a>
         <div id="stripe-embed-container"></div>
       </div>
       <div class="image-box">
@@ -171,8 +197,11 @@
         document.querySelector('[data-plan="' + plan + '"]').classList.add('active');
       }
 
-      function showEmbed(show) {
-        document.getElementById('pricing-section').classList.toggle('embed-visible', show);
+      function showPaymentStep(show) {
+        var section = document.getElementById('pricing-section');
+        var seg2 = document.getElementById('progress-step-2');
+        section.classList.toggle('step-payment', show);
+        if (seg2) seg2.classList.toggle('filled', show);
       }
 
       function showError(msg) {
@@ -205,7 +234,7 @@
               btn.disabled = false;
               return;
             }
-            showEmbed(true);
+            showPaymentStep(true);
             btn.disabled = false;
             getPublishableKey().then(function(key) {
               if (!key) {
@@ -232,6 +261,15 @@
             showError('Network error. Please try again.');
             btn.disabled = false;
           });
+      });
+
+      document.getElementById('back-link').addEventListener('click', function(ev) {
+        ev.preventDefault();
+        showPaymentStep(false);
+        document.getElementById('stripe-embed-container').innerHTML = '';
+      });
+      document.getElementById('back-link').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }
       });
 
       window.selectPlan = selectPlan;
