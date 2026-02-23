@@ -14,14 +14,18 @@ Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then pa
    - `STRIPE_WEBHOOK_SECRET` — From Stripe Dashboard → Webhooks → Add endpoint → select `checkout.session.completed` → use the signing secret.
    - `SHOPIFY_ACCESS_TOKEN` — Shopify Admin API access token (e.g. custom app with `write_draft_orders` scope).
    - `SHOPIFY_SHOP_DOMAIN` — Your shop domain (e.g. `your-store.myshopify.com`).
-   - Optional: `SHOPIFY_VARIANT_YEARLY`, `SHOPIFY_VARIANT_MONTHLY` — Shopify variant IDs for draft order line items; if omitted, draft orders use custom line items with title and price from Stripe.
+   - Optional: `SHOPIFY_VARIANT_YEARLY`, `SHOPIFY_VARIANT_MONTHLY` — Shopify **variant** IDs so draft orders use your real products. Example: yearly variant `45218342797498`, monthly variant `45163711070394`. If omitted, draft orders use custom line items (title + price from Stripe). Draft orders appear in **Shopify Admin → Orders → Draft orders**.
    - Optional: `GA_MEASUREMENT_ID` or `GOOGLE_ANALYTICS_MEASUREMENT_ID` — Google Analytics 4 measurement ID (e.g. `G-XXXXXXXXXX`). When set, the app loads gtag.js and sends GA4 events (see below).
 
 4. After deploy, open your Vercel URL. Step 1: choose plan → Continue. Step 2: your selection summary + Stripe Payment Element + Confirm Purchase button. Back link returns to Step 1.
 
+## Hide “Save my information” / fast checkout
+
+The app uses `payment_method_types: ['card']` only (no Link). If a “Save my information” or fast-checkout block still appears (email, phone, full name), **disable Link** in [Stripe Dashboard → Settings → Payment methods → Link](https://dashboard.stripe.com/settings/payment_methods) by turning Link off for this integration.
+
 ## Express Checkout (Apple Pay, Google Pay)
 
-The Payment Element shows card, Link, and—when enabled in the Dashboard—Apple Pay and Google Pay. To show Apple Pay and Google Pay:
+The Payment Element shows card and—when enabled in the Dashboard—Apple Pay and Google Pay. To show Apple Pay and Google Pay:
 
 - **Stripe Dashboard:** [Settings → Payment methods](https://dashboard.stripe.com/settings/payment_methods) — enable Apple Pay and Google Pay if needed.
 - **Apple Pay:** Register your domain in [Stripe Dashboard → Settings → Payment methods → Apple Pay](https://dashboard.stripe.com/settings/payment_methods). Use your live domain (e.g. `stripe-checkout-app.vercel.app`). Once enabled, the domain appears as a payment method domain (e.g. `pmd_...`) in the Dashboard.
@@ -53,7 +57,7 @@ After deploy, in **Stripe Dashboard → Developers → Webhooks**, add an endpoi
 
 Copy the **Signing secret** and set it as `STRIPE_WEBHOOK_SECRET` in Vercel.
 
-When a customer completes checkout, the webhook creates a draft order in Shopify (customer email, line item from plan, and a note with the Stripe session ID). For signature verification to work, the endpoint must receive the raw request body. If your stack parses the body by default, you may need to disable body parsing for this route (see [Vercel: raw body](https://vercel.com/guides/how-do-i-get-the-raw-body-of-a-serverless-function)).
+When a customer completes checkout, the webhook creates a draft order in Shopify (customer email, line item from plan, and a note with the Stripe session ID). **Set `SHOPIFY_VARIANT_YEARLY` and `SHOPIFY_VARIANT_MONTHLY`** in Vercel so the draft order uses your Shopify product variants; otherwise the draft uses a custom line item. View draft orders in **Shopify Admin → Orders → Draft orders**. For signature verification to work, the endpoint must receive the raw request body. If your stack parses the body by default, you may need to disable body parsing for this route (see [Vercel: raw body](https://vercel.com/guides/how-do-i-get-the-raw-body-of-a-serverless-function)).
 
 ## Optional: Link from Shopify
 

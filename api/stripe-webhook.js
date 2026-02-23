@@ -124,10 +124,10 @@ module.exports = async (req, res) => {
   };
 
   const shopUrl = shopDomain.replace(/^https?:\/\//, '');
-  const url = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
+  const createUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
 
   try {
-    const shopRes = await fetch(url, {
+    const shopRes = await fetch(createUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -141,6 +141,23 @@ module.exports = async (req, res) => {
       console.error('Shopify draft order failed', shopRes.status, text);
       res.status(500).json({ error: 'Failed to create draft order' });
       return;
+    }
+
+    const createData = await shopRes.json();
+    const draftOrderId = createData.draft_order?.id;
+    if (draftOrderId) {
+      const completeUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders/${draftOrderId}/complete.json`;
+      const completeRes = await fetch(completeUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': shopToken,
+        },
+      });
+      if (!completeRes.ok) {
+        const text = await completeRes.text();
+        console.error('Shopify complete draft order failed', completeRes.status, text);
+      }
     }
   } catch (err) {
     console.error('Shopify request error', err.message);
