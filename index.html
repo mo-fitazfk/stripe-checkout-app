@@ -91,6 +91,11 @@
     #stripe-embed-container { width: 100%; min-height: 280px; display: none; }
     .step-payment .plan-box .plan-choice-block { display: none !important; }
     .step-payment .plan-box #stripe-embed-container { display: block !important; }
+    .checkout-email-wrap { display: none; margin-bottom: 20px; }
+    .step-payment .plan-box .checkout-email-wrap { display: block !important; }
+    .checkout-email-wrap label { display: block; font-family: 'General Sans', sans-serif; font-size: 0.9rem; font-weight: 600; color: #422112; margin-bottom: 6px; }
+    .checkout-email-wrap input { width: 100%; padding: 12px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 16px; font-family: inherit; }
+    .checkout-email-wrap input:focus { outline: none; border-color: #ed4580; }
     #pay-button-container { display: none; margin-top: 20px; }
     .step-payment .plan-box #pay-button-container { display: block !important; }
     #payment-step-error { color: #c00; margin-top: 12px; font-size: 0.9rem; display: none; }
@@ -180,6 +185,10 @@
         <div class="selection-summary" id="selection-summary" aria-hidden="true">
           <p class="summary-plan" id="summary-plan">Yearly</p>
           <p class="summary-today" id="summary-today">A$0.00 Today</p>
+        </div>
+        <div class="checkout-email-wrap" id="checkout-email-wrap">
+          <label for="checkout-email">Email address</label>
+          <input type="email" id="checkout-email" name="email" placeholder="you@example.com" required autocomplete="email">
         </div>
         <div id="stripe-embed-container"></div>
         <div id="pay-button-container">
@@ -329,12 +338,25 @@
         var clientSecret = window._currentClientSecret;
         var returnUrl = window._currentReturnUrl;
         if (!checkout || !clientSecret) return;
+        var emailInput = document.getElementById('checkout-email');
+        var email = emailInput ? emailInput.value.trim() : '';
+        if (!email) {
+          document.getElementById('payment-step-error').textContent = 'Please enter your email address.';
+          document.getElementById('payment-step-error').style.display = 'block';
+          return;
+        }
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          document.getElementById('payment-step-error').textContent = 'Please enter a valid email address.';
+          document.getElementById('payment-step-error').style.display = 'block';
+          return;
+        }
         var payBtn = this;
         payBtn.disabled = true;
         document.getElementById('payment-step-error').style.display = 'none';
         document.getElementById('payment-step-error').textContent = '';
         checkout.loadActions()
-          .then(function(loadResult) { return loadResult.actions.confirm(); })
+          .then(function(loadResult) { return loadResult.actions.confirm({ email: email }); })
           .then(function(result) {
             if (result && result.error) {
               document.getElementById('payment-step-error').textContent = result.error.message || 'Payment failed.';
@@ -360,6 +382,8 @@
         gtagEvent('back_to_plan', { from: 'payment' });
         showPaymentStep(false);
         document.getElementById('stripe-embed-container').innerHTML = '';
+        var emailEl = document.getElementById('checkout-email');
+        if (emailEl) emailEl.value = '';
         window._currentCheckout = null;
         window._currentClientSecret = null;
         window._currentReturnUrl = null;
