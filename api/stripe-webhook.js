@@ -2,17 +2,11 @@ const Stripe = require('stripe');
 
 /**
  * Get raw request body for Stripe signature verification.
- * Tries stream first (when body parsing is disabled); falls back to req.body.
- * Note: JSON.stringify(req.body) can change key order and cause verification to fail.
+ * Must be the exact bytes Stripe sent; re-stringifying req.body breaks the signature.
+ * Read from the request stream (body parsing must be disabled for this route).
  */
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
-    if (typeof req.body === 'string') {
-      return resolve(req.body);
-    }
-    if (req.body && typeof req.body === 'object') {
-      return resolve(JSON.stringify(req.body));
-    }
     const chunks = [];
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
@@ -167,3 +161,6 @@ module.exports = async (req, res) => {
 
   res.status(200).json({ received: true });
 };
+
+// Disable body parsing so we can read the raw stream for Stripe signature verification.
+module.exports.config = { api: { bodyParser: false } };
