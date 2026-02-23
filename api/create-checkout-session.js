@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
   const priceId = plan === 'yearly' ? priceYearly : priceMonthly;
   const planName = plan === 'yearly' ? 'Yearly' : 'Monthly';
 
-  const stripe = new Stripe(stripeSecretKey);
+  const stripe = new Stripe(stripeSecretKey, { apiVersion: '2025-03-31.basil' });
 
   const origin = req.headers.origin || req.headers.referer || 'https://localhost:3000';
   const baseUrl = origin.replace(/\/$/, '');
