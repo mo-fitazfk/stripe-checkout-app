@@ -66,9 +66,14 @@
     .image-box { flex: 1 1 60%; min-width: 500px; background: #e0f4ff; display: flex; align-items: center; justify-content: center; }
     .image-box img { width: 100%; height: 100%; object-fit: cover; }
     .step-header { margin-bottom: 20px; }
-    .back-link { font-family: 'General Sans', sans-serif; display: none; margin-bottom: 12px; color: #ed4580; cursor: pointer; text-decoration: underline; font-size: 0.95rem; }
-    .back-link:hover { color: #422112; }
-    .step-payment .plan-box .back-link { display: inline-block !important; }
+    .back-btn-wrap { display: none; margin-bottom: 16px; }
+    .step-payment .plan-box .back-btn-wrap { display: flex !important; align-items: center; }
+    .back-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #e2e8f0; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; transition: border-color 0.2s, background 0.2s; color: #422112; }
+    .back-btn:hover { border-color: #ed4580; background: rgba(237, 69, 128, 0.06); }
+    .back-btn svg { width: 18px; height: 18px; }
+    .stripe-loading-spinner { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; color: #817364; font-size: 0.9rem; }
+    .stripe-loading-spinner .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #ed4580; border-radius: 50%; animation: stripe-spin 0.8s linear infinite; margin-bottom: 12px; }
+    @keyframes stripe-spin { to { transform: rotate(360deg); } }
     .heading-step { font-family: 'Cambon', serif; font-size: 1.4rem; font-weight: 600; color: #422112; margin-bottom: 8px; }
     .heading-step.heading-payment { display: none; }
     .step-payment .plan-box .heading-step.heading-plan { display: none !important; }
@@ -79,9 +84,9 @@
     .progress-segment.step-2.filled { background: #ed4580; }
     .step-payment .plan-box .progress-segment.step-2 { background: #ed4580; }
     .progress-labels { display: flex; justify-content: space-between; font-family: 'General Sans', sans-serif; font-size: 0.75rem; color: #817364; margin-top: 4px; }
-    .selection-summary { display: none; background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-family: 'General Sans', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    .step-payment .plan-box .selection-summary { display: block !important; }
-    .selection-summary .summary-plan { font-size: 18px; font-weight: 600; color: #422112; margin: 0 0 4px 0; }
+    .selection-summary { display: none; background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-family: 'General Sans', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.08); flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+    .step-payment .plan-box .selection-summary { display: flex !important; }
+    .selection-summary .summary-plan { font-size: 18px; font-weight: 600; color: #422112; margin: 0; }
     .selection-summary .summary-today { font-size: 18px; color: #422112; margin: 0; }
     #stripe-embed-container { width: 100%; min-height: 280px; display: none; }
     .step-payment .plan-box .plan-choice-block { display: none !important; }
@@ -106,7 +111,11 @@
     <div class="pricing-container">
       <div class="plan-box">
         <div class="step-header">
-          <a role="button" class="back-link" id="back-link" tabindex="0">← Back</a>
+          <div class="back-btn-wrap">
+            <button type="button" class="back-btn" id="back-link" aria-label="Back to plan selection">
+              <svg viewBox="0 0 48 48" fill="currentColor" aria-hidden="true"><path d="M.894 5.21A3.052 3.052 0 0 1 5.21.894L16 11.684 26.79.894A3.052 3.052 0 0 1 31.106 5.21L18.158 18.158a3.052 3.052 0 0 1-4.1.2l-.218-.2Z" transform="translate(33.526 7.526) rotate(90)"/></svg>
+            </button>
+          </div>
           <h2 class="heading-step heading-plan" id="heading-plan">Choose your plan</h2>
           <h2 class="heading-step heading-payment" id="heading-payment">Payment</h2>
           <div class="progress-bar">
@@ -171,7 +180,7 @@
         </div>
         <div class="selection-summary" id="selection-summary" aria-hidden="true">
           <p class="summary-plan" id="summary-plan">Yearly</p>
-          <div><p class="summary-today" id="summary-today">A$0.00 Today</p></div>
+          <p class="summary-today" id="summary-today">A$0.00 Today</p>
         </div>
         <div id="stripe-embed-container"></div>
         <div id="pay-button-container">
@@ -256,9 +265,11 @@
             }
             showPaymentStep(true);
             btn.disabled = false;
+            var container = document.getElementById('stripe-embed-container');
+            container.innerHTML = '<div class="stripe-loading-spinner"><div class="spinner"></div><span>Loading payment form…</span></div>';
             getPublishableKey().then(function(key) {
               if (!key) {
-                document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">Set STRIPE_PUBLISHABLE_KEY in Vercel env (see README).</p>';
+                container.innerHTML = '<p style="color:#c00;">Set STRIPE_PUBLISHABLE_KEY in Vercel env (see README).</p>';
                 return;
               }
               try {
@@ -268,17 +279,18 @@
                 window._currentClientSecret = clientSecret;
                 window._currentReturnUrl = returnUrl;
                 var paymentElement = checkout.createPaymentElement();
+                container.innerHTML = '';
                 paymentElement.mount('#stripe-embed-container');
                 document.getElementById('payment-step-error').style.display = 'none';
                 document.getElementById('payment-step-error').textContent = '';
               } catch (err) {
-                document.getElementById('stripe-embed-container').innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
+                container.innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
               }
             }).catch(function(err) {
               var msg = 'Could not load Stripe config. ';
               if (err && err.message) msg += err.message + '. ';
               msg += 'Set STRIPE_PUBLISHABLE_KEY or REACT_APP_STRIPE_PUBLISHABLE_KEY in Vercel and ensure /api/config is reachable.';
-              document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">' + msg + '</p>';
+              container.innerHTML = '<p style="color:#c00;">' + msg + '</p>';
             });
           })
           .catch(function(err) {
