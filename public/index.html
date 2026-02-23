@@ -100,6 +100,12 @@
     .step-payment .plan-box #pay-button-container { display: block !important; }
     #payment-step-error { color: #c00; margin-top: 12px; font-size: 0.9rem; display: none; }
     .error-msg { color: #c00; margin-top: 12px; font-size: 0.9rem; }
+    .success-section { display: none; min-height: 100vh; padding: 40px 20px; font-family: 'General Sans', sans-serif; }
+    body.show-success .success-section { display: flex; align-items: center; justify-content: center; }
+    body.show-success .pricing-section { display: none !important; }
+    .success-section .success-box { text-align: center; max-width: 420px; }
+    .success-section .success-box h1 { font-family: 'Cambon', serif; font-size: 1.75rem; color: #422112; margin-bottom: 12px; }
+    .success-section .success-box p { color: #817364; font-size: 1rem; line-height: 1.5; }
     @media (max-width: 767px) {
       .pricing-container { flex-direction: column; }
       .plan-box { min-width: auto; order: 2; padding: 20px; }
@@ -202,9 +208,24 @@
     </div>
   </section>
 
+  <section class="success-section" id="success-section" aria-hidden="true">
+    <div class="success-box">
+      <h1>Thank you</h1>
+      <p>Your subscription is confirmed. Check your email for details.</p>
+    </div>
+  </section>
+
   <script src="https://js.stripe.com/clover/stripe.js"></script>
   <script>
     (function() {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('success') === '1' && params.get('session_id')) {
+        document.body.classList.add('show-success');
+        var successEl = document.getElementById('success-section');
+        if (successEl) successEl.setAttribute('aria-hidden', 'false');
+        return;
+      }
+
       var selectedPlan = 'yearly';
       var cachedPublishableKey = null;
 

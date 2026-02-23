@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       ui_mode: 'custom',
-      payment_method_types: ['card', 'link'],
+      payment_method_types: ['card'],
       line_items: [
         {
           price_data: {
