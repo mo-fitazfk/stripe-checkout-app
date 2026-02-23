@@ -83,9 +83,12 @@
     .step-payment .plan-box .selection-summary { display: block !important; }
     .selection-summary .summary-plan { font-size: 18px; font-weight: 600; color: #422112; margin: 0 0 4px 0; }
     .selection-summary .summary-today { font-size: 18px; color: #422112; margin: 0; }
-    #stripe-embed-container { width: 100%; min-height: 400px; display: none; }
+    #stripe-embed-container { width: 100%; min-height: 280px; display: none; }
     .step-payment .plan-box .plan-choice-block { display: none !important; }
     .step-payment .plan-box #stripe-embed-container { display: block !important; }
+    #pay-button-container { display: none; margin-top: 20px; }
+    .step-payment .plan-box #pay-button-container { display: block !important; }
+    #payment-step-error { color: #c00; margin-top: 12px; font-size: 0.9rem; display: none; }
     .error-msg { color: #c00; margin-top: 12px; font-size: 0.9rem; }
     @media (max-width: 767px) {
       .pricing-container { flex-direction: column; }
@@ -171,6 +174,10 @@
           <div><p class="summary-today" id="summary-today">A$0.00 Today</p></div>
         </div>
         <div id="stripe-embed-container"></div>
+        <div id="pay-button-container">
+          <button type="button" class="cta-button" id="pay-btn">Subscribe</button>
+          <div id="payment-step-error" class="error-msg"></div>
+        </div>
       </div>
       <div class="image-box">
         <img src="https://cdn.shopify.com/s/files/1/2320/2099/files/231208_TRANSFORM22441_4.jpg?v=1769565606" alt="FitAz Transform">
@@ -241,6 +248,7 @@
               return;
             }
             var clientSecret = result.data.client_secret;
+            var returnUrl = result.data.return_url || (window.location.origin + window.location.pathname.replace(/\/$/, '') + '/?session_id={CHECKOUT_SESSION_ID}&success=1');
             if (!clientSecret) {
               showError('No checkout session received.');
               btn.disabled = false;
@@ -253,11 +261,16 @@
                 document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">Set STRIPE_PUBLISHABLE_KEY in Vercel env (see README).</p>';
                 return;
               }
-              var stripe = Stripe(key);
-              var fetchClientSecret = function() { return Promise.resolve(clientSecret); };
-              stripe.initEmbeddedCheckout({ fetchClientSecret: fetchClientSecret })
+              var stripeInstance = Stripe(key);
+              stripeInstance.initCheckout({ clientSecret: Promise.resolve(clientSecret) })
                 .then(function(checkout) {
-                  checkout.mount('#stripe-embed-container');
+                  window._currentCheckout = checkout;
+                  window._currentClientSecret = clientSecret;
+                  window._currentReturnUrl = returnUrl;
+                  var paymentElement = checkout.createPaymentElement();
+                  paymentElement.mount('#stripe-embed-container');
+                  document.getElementById('payment-step-error').style.display = 'none';
+                  document.getElementById('payment-step-error').textContent = '';
                 })
                 .catch(function(err) {
                   document.getElementById('stripe-embed-container').innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
@@ -275,10 +288,44 @@
           });
       });
 
+      document.getElementById('pay-btn').addEventListener('click', function(ev) {
+        ev.preventDefault();
+        var checkout = window._currentCheckout;
+        var clientSecret = window._currentClientSecret;
+        var returnUrl = window._currentReturnUrl;
+        if (!checkout || !clientSecret) return;
+        var payBtn = this;
+        payBtn.disabled = true;
+        document.getElementById('payment-step-error').style.display = 'none';
+        document.getElementById('payment-step-error').textContent = '';
+        checkout.loadActions()
+          .then(function(loadResult) { return loadResult.actions.confirm(); })
+          .then(function(result) {
+            if (result && result.error) {
+              document.getElementById('payment-step-error').textContent = result.error.message || 'Payment failed.';
+              document.getElementById('payment-step-error').style.display = 'block';
+              payBtn.disabled = false;
+              return;
+            }
+            var sessionId = clientSecret.split('_secret_')[0];
+            if (returnUrl && sessionId) {
+              window.location = returnUrl.replace('{CHECKOUT_SESSION_ID}', sessionId);
+            }
+          })
+          .catch(function(err) {
+            document.getElementById('payment-step-error').textContent = err.message || 'Something went wrong.';
+            document.getElementById('payment-step-error').style.display = 'block';
+            payBtn.disabled = false;
+          });
+      });
+
       document.getElementById('back-link').addEventListener('click', function(ev) {
         ev.preventDefault();
         showPaymentStep(false);
         document.getElementById('stripe-embed-container').innerHTML = '';
+        window._currentCheckout = null;
+        window._currentClientSecret = null;
+        window._currentReturnUrl = null;
       });
       document.getElementById('back-link').addEventListener('keydown', function(e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.click(); }

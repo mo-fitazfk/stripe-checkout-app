@@ -1,6 +1,6 @@
 # Stripe Checkout — Choose Plan (EvolveYou-style)
 
-Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then Stripe Embedded Checkout. No login required. Successful payments are sent to Shopify as draft orders.
+Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then payment with Stripe **Checkout Sessions (custom UI)** and the **Payment Element**. No Stripe-hosted iframe—only your summary and the payment form. No login required. Successful payments are sent to Shopify as draft orders.
 
 ## Deploy on Vercel
 
@@ -16,11 +16,11 @@ Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then St
    - `SHOPIFY_SHOP_DOMAIN` — Your shop domain (e.g. `your-store.myshopify.com`).
    - Optional: `SHOPIFY_VARIANT_YEARLY`, `SHOPIFY_VARIANT_MONTHLY` — Shopify variant IDs for draft order line items; if omitted, draft orders use custom line items with title and price from Stripe.
 
-4. After deploy, open your Vercel URL. Step 1: choose plan → Continue. Step 2: payment form (Stripe Embedded Checkout). Back link returns to Step 1.
+4. After deploy, open your Vercel URL. Step 1: choose plan → Continue. Step 2: your selection summary + Stripe Payment Element + Subscribe button. Back link returns to Step 1.
 
 ## Express Checkout (Apple Pay, Google Pay)
 
-The checkout session requests `card`, `apple_pay`, and `google_pay`. To show Apple Pay and Google Pay in Embedded Checkout:
+The Payment Element shows card, Link, and—when enabled in the Dashboard—Apple Pay and Google Pay. To show Apple Pay and Google Pay:
 
 - **Stripe Dashboard:** [Settings → Payment methods](https://dashboard.stripe.com/settings/payment_methods) — enable Apple Pay and Google Pay if needed.
 - **Apple Pay:** Register your domain in [Stripe Dashboard → Settings → Payment methods → Apple Pay](https://dashboard.stripe.com/settings/payment_methods). Use your live domain (e.g. `stripe-checkout-app.vercel.app`).

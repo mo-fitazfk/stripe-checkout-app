@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      ui_mode: 'embedded',
+      ui_mode: 'custom',
       payment_method_types: ['card', 'link'],
       line_items: [
         {
@@ -74,7 +74,7 @@ module.exports = async (req, res) => {
       metadata: { plan },
     });
 
-    res.status(200).json({ client_secret: session.client_secret });
+    res.status(200).json({ client_secret: session.client_secret, return_url: returnUrl });
   } catch (err) {
     console.error('Stripe session create error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to create checkout session' });
