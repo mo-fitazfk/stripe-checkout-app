@@ -15,6 +15,7 @@ Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then pa
    - `SHOPIFY_ACCESS_TOKEN` — Shopify Admin API access token (e.g. custom app with `write_draft_orders` scope).
    - `SHOPIFY_SHOP_DOMAIN` — Your shop domain (e.g. `your-store.myshopify.com`).
    - Optional: `SHOPIFY_VARIANT_YEARLY`, `SHOPIFY_VARIANT_MONTHLY` — Shopify variant IDs for draft order line items; if omitted, draft orders use custom line items with title and price from Stripe.
+   - Optional: `GA_MEASUREMENT_ID` or `GOOGLE_ANALYTICS_MEASUREMENT_ID` — Google Analytics 4 measurement ID (e.g. `G-XXXXXXXXXX`). When set, the app loads gtag.js and sends GA4 events (see below).
 
 4. After deploy, open your Vercel URL. Step 1: choose plan → Continue. Step 2: your selection summary + Stripe Payment Element + Confirm Purchase button. Back link returns to Step 1.
 
@@ -27,6 +28,21 @@ The Payment Element shows card, Link, and—when enabled in the Dashboard—Appl
 - **Google Pay:** No domain registration in Stripe; ensure it’s enabled in Payment methods. Buttons appear when the customer’s browser/device supports them.
 
 If you prefer Stripe to choose payment methods automatically, remove `payment_method_types` from `api/create-checkout-session.js` and manage methods in the Dashboard only.
+
+## Google Analytics 4 (GA4)
+
+If `GA_MEASUREMENT_ID` (or `GOOGLE_ANALYTICS_MEASUREMENT_ID`) is set in Vercel, the app fetches it from `/api/config` and loads GA4. Events sent:
+
+| Event | When |
+|-------|------|
+| `page_view` | Automatic on load (via `gtag('config', id)`). |
+| `select_plan` | User selects Yearly or Monthly (params: `plan`). |
+| `begin_checkout` | User clicks Continue and reaches the payment step (params: `plan`, `currency`). |
+| `add_payment_info` | Payment Element is mounted (params: `plan`, `currency`). |
+| `purchase` | User completes payment, before redirect (params: `transaction_id`, `plan`, `currency`, `value`). |
+| `back_to_plan` | User clicks Back from the payment step (params: `from`). |
+
+Get your measurement ID from [Google Analytics](https://analytics.google.com) → Admin → Data streams → your web stream → Measurement ID (e.g. `G-XXXXXXXXXX`).
 
 ## Webhook (send purchase to Shopify)
 

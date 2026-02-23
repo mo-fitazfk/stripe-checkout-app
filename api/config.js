@@ -8,5 +8,6 @@ module.exports = async (req, res) => {
     return;
   }
   const key = process.env.STRIPE_PUBLISHABLE_KEY || process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '';
-  res.status(200).json({ publishableKey: key });
+  const gaMeasurementId = process.env.GA_MEASUREMENT_ID || process.env.GOOGLE_ANALYTICS_MEASUREMENT_ID || '';
+  res.status(200).json({ publishableKey: key, gaMeasurementId: gaMeasurementId || undefined });
 };

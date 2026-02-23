@@ -198,6 +198,28 @@
     (function() {
       var selectedPlan = 'yearly';
       var cachedPublishableKey = null;
+
+      function loadGA4(measurementId) {
+        if (!measurementId || window.gtag) return;
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){ dataLayer.push(arguments); }
+        window.gtag = gtag;
+        gtag('js', new Date());
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
+        document.head.appendChild(s);
+        s.onload = function() { gtag('config', measurementId); };
+      }
+      function gtagEvent(name, params) {
+        if (window.gtag) window.gtag('event', name, params || {});
+      }
+
+      fetch('/api/config').then(function(r) { return r.json(); }).then(function(data) {
+        cachedPublishableKey = data.publishableKey || '';
+        if (data.gaMeasurementId) loadGA4(data.gaMeasurementId);
+      }).catch(function() {});
+
       function getPublishableKey() {
         if (cachedPublishableKey) return Promise.resolve(cachedPublishableKey);
         return fetch('/api/config').then(function(r) {
@@ -211,6 +233,7 @@
 
       function selectPlan(plan) {
         selectedPlan = plan;
+        gtagEvent('select_plan', { plan: plan });
         document.querySelectorAll('.pricing-card').forEach(function(card) {
           card.classList.remove('active');
         });
@@ -264,6 +287,7 @@
             }
             showPaymentStep(true);
             btn.disabled = false;
+            gtagEvent('begin_checkout', { plan: selectedPlan, currency: 'AUD' });
             var container = document.getElementById('stripe-embed-container');
             container.innerHTML = '<div class="stripe-loading-spinner"><div class="spinner"></div><span>Loading payment form…</span></div>';
             getPublishableKey().then(function(key) {
@@ -280,6 +304,7 @@
                 var paymentElement = checkout.createPaymentElement();
                 container.innerHTML = '';
                 paymentElement.mount('#stripe-embed-container');
+                gtagEvent('add_payment_info', { plan: selectedPlan, currency: 'AUD' });
                 document.getElementById('payment-step-error').style.display = 'none';
                 document.getElementById('payment-step-error').textContent = '';
               } catch (err) {
@@ -318,6 +343,7 @@
               return;
             }
             var sessionId = clientSecret.split('_secret_')[0];
+            gtagEvent('purchase', { transaction_id: sessionId, plan: selectedPlan, currency: 'AUD', value: 0 });
             if (returnUrl && sessionId) {
               window.location = returnUrl.replace('{CHECKOUT_SESSION_ID}', sessionId);
             }
@@ -331,6 +357,7 @@
 
       document.getElementById('back-link').addEventListener('click', function(ev) {
         ev.preventDefault();
+        gtagEvent('back_to_plan', { from: 'payment' });
         showPaymentStep(false);
         document.getElementById('stripe-embed-container').innerHTML = '';
         window._currentCheckout = null;
