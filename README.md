@@ -16,14 +16,14 @@ Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then pa
    - `SHOPIFY_SHOP_DOMAIN` — Your shop domain (e.g. `your-store.myshopify.com`).
    - Optional: `SHOPIFY_VARIANT_YEARLY`, `SHOPIFY_VARIANT_MONTHLY` — Shopify variant IDs for draft order line items; if omitted, draft orders use custom line items with title and price from Stripe.
 
-4. After deploy, open your Vercel URL. Step 1: choose plan → Continue. Step 2: your selection summary + Stripe Payment Element + Subscribe button. Back link returns to Step 1.
+4. After deploy, open your Vercel URL. Step 1: choose plan → Continue. Step 2: your selection summary + Stripe Payment Element + Confirm Purchase button. Back link returns to Step 1.
 
 ## Express Checkout (Apple Pay, Google Pay)
 
 The Payment Element shows card, Link, and—when enabled in the Dashboard—Apple Pay and Google Pay. To show Apple Pay and Google Pay:
 
 - **Stripe Dashboard:** [Settings → Payment methods](https://dashboard.stripe.com/settings/payment_methods) — enable Apple Pay and Google Pay if needed.
-- **Apple Pay:** Register your domain in [Stripe Dashboard → Settings → Payment methods → Apple Pay](https://dashboard.stripe.com/settings/payment_methods). Use your live domain (e.g. `stripe-checkout-app.vercel.app`).
+- **Apple Pay:** Register your domain in [Stripe Dashboard → Settings → Payment methods → Apple Pay](https://dashboard.stripe.com/settings/payment_methods). Use your live domain (e.g. `stripe-checkout-app.vercel.app`). Once enabled, the domain appears as a payment method domain (e.g. `pmd_...`) in the Dashboard.
 - **Google Pay:** No domain registration in Stripe; ensure it’s enabled in Payment methods. Buttons appear when the customer’s browser/device supports them.
 
 If you prefer Stripe to choose payment methods automatically, remove `payment_method_types` from `api/create-checkout-session.js` and manage methods in the Dashboard only.
