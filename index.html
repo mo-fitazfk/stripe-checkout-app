@@ -185,7 +185,7 @@
     </div>
   </section>
 
-  <script src="https://js.stripe.com/basil/stripe.js"></script>
+  <script src="https://js.stripe.com/clover/stripe.js"></script>
   <script>
     (function() {
       var selectedPlan = 'yearly';
@@ -261,20 +261,19 @@
                 document.getElementById('stripe-embed-container').innerHTML = '<p style="color:#c00;">Set STRIPE_PUBLISHABLE_KEY in Vercel env (see README).</p>';
                 return;
               }
-              var stripeInstance = Stripe(key);
-              stripeInstance.initCheckout({ clientSecret: Promise.resolve(clientSecret) })
-                .then(function(checkout) {
-                  window._currentCheckout = checkout;
-                  window._currentClientSecret = clientSecret;
-                  window._currentReturnUrl = returnUrl;
-                  var paymentElement = checkout.createPaymentElement();
-                  paymentElement.mount('#stripe-embed-container');
-                  document.getElementById('payment-step-error').style.display = 'none';
-                  document.getElementById('payment-step-error').textContent = '';
-                })
-                .catch(function(err) {
-                  document.getElementById('stripe-embed-container').innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
-                });
+              try {
+                var stripeInstance = Stripe(key);
+                var checkout = stripeInstance.initCheckout({ clientSecret: Promise.resolve(clientSecret) });
+                window._currentCheckout = checkout;
+                window._currentClientSecret = clientSecret;
+                window._currentReturnUrl = returnUrl;
+                var paymentElement = checkout.createPaymentElement();
+                paymentElement.mount('#stripe-embed-container');
+                document.getElementById('payment-step-error').style.display = 'none';
+                document.getElementById('payment-step-error').textContent = '';
+              } catch (err) {
+                document.getElementById('stripe-embed-container').innerHTML = '<p class="error-msg">Could not load payment form: ' + (err.message || err) + '</p>';
+              }
             }).catch(function(err) {
               var msg = 'Could not load Stripe config. ';
               if (err && err.message) msg += err.message + '. ';
