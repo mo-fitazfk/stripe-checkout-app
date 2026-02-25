@@ -54,8 +54,14 @@ async function createSubscription(email, plan, shopifyCustomerId) {
   const nextBillingDateEpoch = Math.floor(Date.now() / 1000) + 10 * 365.25 * 24 * 60 * 60;
   const tenYearsPolicy = { interval: 'YEAR', intervalCount: 10 };
   try {
+    const customerIdNum = Number(shopifyCustomerId);
+    const variantIdNum = Number(variantId);
+    if (Number.isNaN(customerIdNum) || Number.isNaN(variantIdNum)) {
+      console.warn('Loop: invalid customer or variant ID');
+      return { ok: false, error: 'Invalid ID' };
+    }
     const body = {
-      customerShopifyId: String(shopifyCustomerId),
+      customerShopifyId: customerIdNum,
       nextBillingDateEpoch,
       currencyCode,
       billingPolicy: tenYearsPolicy,
@@ -63,7 +69,7 @@ async function createSubscription(email, plan, shopifyCustomerId) {
       lines: [
         {
           selling_plan_id: sellingPlanId,
-          variant_id: String(variantId),
+          variantShopifyId: variantIdNum,
           quantity: 1,
         },
       ],
