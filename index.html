@@ -311,16 +311,28 @@
         el.style.display = msg ? 'block' : 'none';
       }
 
+      function getUtmParams() {
+        var params = new URLSearchParams(window.location.search);
+        var utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
+        var out = {};
+        utmKeys.forEach(function(key) {
+          var val = params.get(key);
+          if (val && val.trim()) out[key] = val.trim();
+        });
+        return out;
+      }
+
       document.getElementById('continue-btn').addEventListener('click', function(ev) {
         ev.preventDefault();
         ev.stopPropagation();
         var btn = this;
         btn.disabled = true;
         showError('');
+        var payload = Object.assign({ plan: selectedPlan }, getUtmParams());
         fetch('/api/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan: selectedPlan })
+          body: JSON.stringify(payload)
         })
           .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
           .then(function(result) {

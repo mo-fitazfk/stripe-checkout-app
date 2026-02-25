@@ -34,6 +34,16 @@ module.exports = async (req, res) => {
     return;
   }
 
+  const metadata = { plan };
+  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
+  const METADATA_VALUE_MAX = 500;
+  for (const key of utmKeys) {
+    const val = body[key];
+    if (typeof val === 'string' && val.trim()) {
+      metadata[key] = val.trim().slice(0, METADATA_VALUE_MAX);
+    }
+  }
+
   const priceId = plan === 'yearly' ? priceYearly : priceMonthly;
   const planName = plan === 'yearly' ? 'Yearly' : 'Monthly';
 
@@ -71,7 +81,7 @@ module.exports = async (req, res) => {
         trial_period_days: 7,
       },
       return_url: returnUrl,
-      metadata: { plan },
+      metadata,
     });
 
     res.status(200).json({ client_secret: session.client_secret, return_url: returnUrl });

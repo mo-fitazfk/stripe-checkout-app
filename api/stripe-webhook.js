@@ -76,6 +76,13 @@ module.exports = async (req, res) => {
   const currency = (session.currency || 'aud').toLowerCase();
   const amountFormatted = (amountTotal / 100).toFixed(2);
 
+  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
+  const utm = {};
+  for (const key of utmKeys) {
+    const val = session.metadata?.[key];
+    if (typeof val === 'string' && val.trim()) utm[key] = val.trim();
+  }
+
   if (!shopDomain || !shopToken) {
     console.warn('Webhook: Shopify not configured, skipping draft order');
     res.status(200).json({ received: true });
@@ -105,15 +112,26 @@ module.exports = async (req, res) => {
     ];
   }
 
+  const noteAttributes = [
+    { name: 'stripe_session_id', value: sessionId },
+    { name: 'plan', value: plan },
+  ];
+  for (const key of Object.keys(utm)) {
+    noteAttributes.push({ name: key, value: utm[key] });
+  }
+
+  let note = `Stripe session: ${sessionId}. Plan: ${plan}.`;
+  if (Object.keys(utm).length > 0) {
+    const utmLine = Object.entries(utm).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    note += ` UTM: ${utmLine}`;
+  }
+
   const draftOrder = {
     draft_order: {
       line_items: lineItems,
       email: email || undefined,
-      note: `Stripe session: ${sessionId}. Plan: ${plan}.`,
-      note_attributes: [
-        { name: 'stripe_session_id', value: sessionId },
-        { name: 'plan', value: plan },
-      ],
+      note,
+      note_attributes: noteAttributes,
     },
   };
 
