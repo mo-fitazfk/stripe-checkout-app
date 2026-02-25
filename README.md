@@ -55,7 +55,7 @@ Get your measurement ID from [Google Analytics](https://analytics.google.com) �
 After deploy, in **Stripe Dashboard → Developers → Webhooks**, add an endpoint:
 
 - **URL:** `https://<your-vercel-domain>/api/stripe-webhook`
-- **Events:** `checkout.session.completed`, **`invoice.paid`**
+- **Events:** `checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`, `customer.subscription.updated`
 
 Copy the **Signing secret** and set it as `STRIPE_WEBHOOK_SECRET` in Vercel.
 
@@ -74,6 +74,14 @@ After a customer completes checkout, the thank-you page shows a **Manage subscri
 - **How it works:** The link goes to `/api/create-portal-session?session_id=...` (using the checkout `session_id` from the thank-you URL). The API retrieves the Stripe customer from that session, creates a Billing Portal session, and redirects the customer to Stripe’s portal. No extra env vars are required beyond `STRIPE_SECRET_KEY`. The thank-you page also shows a **Portal link (use anytime)** — the Stripe billing portal login URL — so customers can manage their billing even without the success URL; you can share that link on your site or send it to customers.
 
 Optional webhook and "manage by email" can be added later without changing this flow. Possible enhancements: a “manage by email” flow for returning visitors who no longer have the success URL, or webhook handlers for `customer.subscription.updated` / `customer.subscription.deleted` to sync cancellation status to your iOS app or other systems.
+
+## Loop subscription sync (optional)
+
+When enabled, the webhook creates a **timeless** Loop subscription (no charge in Loop) for each Stripe purchase and cancels it when the customer cancels in Stripe. Use a Loop selling plan set to "deliver every 10 years" (or similar) so Loop never bills.
+
+- **Env vars (only used when `LOOP_SYNC_ENABLED` is set):** `LOOP_SYNC_ENABLED` (set to `true` or `1` to enable; omit or `false` to disable), `LOOP_API_TOKEN` (Loop Merchant API token), `LOOP_SELLING_PLAN_ID` (e.g. `42752` for Platinum 10-year), optional `LOOP_API_BASE_URL`.
+- **Stripe webhook:** Ensure `customer.subscription.deleted` and `customer.subscription.updated` are selected so cancellations sync to Loop.
+- **To turn off:** Set `LOOP_SYNC_ENABLED` to `false` or remove it in Vercel and redeploy. Edit `api/lib/loop.js` if your Loop API body or cancel flow differs (see help.loopwork.co).
 
 ## Optional: Link from Shopify
 

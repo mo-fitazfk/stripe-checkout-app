@@ -1,4 +1,5 @@
 const Stripe = require('stripe');
+const loop = require('./lib/loop');
 
 /**
  * Get raw request body for Stripe signature verification.
@@ -96,6 +97,32 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // Loop sync: cancel subscription when customer cancels in Stripe (no Shopify work)
+  if (event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
+    if (loop.isEnabled()) {
+      const sub = event.data.object;
+      const status = sub.status;
+      const isCanceled = status === 'canceled' || status === 'cancelled' || status === 'unpaid' || status === 'incomplete_expired';
+      if (event.type === 'customer.subscription.deleted' || isCanceled) {
+        let email = null;
+        try {
+          if (sub.customer) {
+            const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+            const customer = await stripe.customers.retrieve(customerId);
+            email = customer.deleted ? null : customer.email;
+          }
+          if (email) {
+            await loop.cancelSubscription(email);
+          }
+        } catch (err) {
+          console.error('Loop: cancel on subscription event failed', err.message);
+        }
+      }
+    }
+    res.status(200).json({ received: true });
+    return;
+  }
+
   if (event.type !== 'checkout.session.completed' && event.type !== 'invoice.paid') {
     res.status(200).json({ received: true });
     return;
@@ -187,6 +214,13 @@ module.exports = async (req, res) => {
       console.error('Shopify request error', err.message);
       res.status(500).json({ error: 'Shopify request failed' });
       return;
+    }
+    if (loop.isEnabled() && email) {
+      try {
+        await loop.createSubscription(email, plan);
+      } catch (err) {
+        console.error('Loop createSubscription error', err.message);
+      }
     }
     res.status(200).json({ received: true });
     return;
