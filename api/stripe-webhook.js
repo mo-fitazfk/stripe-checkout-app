@@ -112,17 +112,22 @@ module.exports = async (req, res) => {
   const priceMonthly = process.env.STRIPE_PRICE_MONTHLY;
 
   function buildLineItems(plan, amountFormatted) {
-    // When using variant_id, pass price so trial (0.00) overrides variant list price
-    if (plan === 'yearly' && variantYearly) {
-      return [{ variant_id: parseInt(variantYearly, 10), quantity: 1, price: amountFormatted }];
-    }
-    if (plan === 'monthly' && variantMonthly) {
-      return [{ variant_id: parseInt(variantMonthly, 10), quantity: 1, price: amountFormatted }];
-    }
+    // Trial (0.00): use custom line item so Shopify respects the price. REST API "price" is only for custom line items; variant_id uses catalog price.
+    const isTrial = amountFormatted === '0.00';
     const title =
       plan === 'yearly'
         ? 'Platinum Membership - Yearly'
         : 'Platinum Membership - Monthly';
+    if (isTrial) {
+      return [{ title, price: '0.00', quantity: 1, taxable: false }];
+    }
+    // Paid: use Shopify variant when configured so the real product appears
+    if (plan === 'yearly' && variantYearly) {
+      return [{ variant_id: parseInt(variantYearly, 10), quantity: 1 }];
+    }
+    if (plan === 'monthly' && variantMonthly) {
+      return [{ variant_id: parseInt(variantMonthly, 10), quantity: 1 }];
+    }
     return [
       { title, price: amountFormatted, quantity: 1, taxable: false },
     ];

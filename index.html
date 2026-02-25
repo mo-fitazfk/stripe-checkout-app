@@ -232,7 +232,6 @@
           Google Play
         </a>
       </div>
-      <p class="success-support"><a href="#" id="manage-subscription-link">Manage subscription</a> — cancel, update payment, or view invoices.</p>
       <p class="success-support">Portal link (use anytime): <a href="https://billing.stripe.com/p/login/dRm5kw5JHdUSfh01xqeME00" target="_blank" rel="noopener noreferrer">Manage your billing</a>. Share this link or send it to customers to manage their subscription.</p>
       <p class="success-support">Need help? <a href="https://transformbyfitaz.gorgias.help/en-US" target="_blank" rel="noopener noreferrer">Contact support</a></p>
     </div>
@@ -246,11 +245,6 @@
         document.body.classList.add('show-success');
         var successEl = document.getElementById('success-section');
         if (successEl) successEl.setAttribute('aria-hidden', 'false');
-        var manageLink = document.getElementById('manage-subscription-link');
-        if (manageLink) {
-          var sid = params.get('session_id');
-          manageLink.href = '/api/create-portal-session?session_id=' + encodeURIComponent(sid);
-        }
         return;
       }
 
