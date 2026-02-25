@@ -13,7 +13,7 @@ function isEnabled() {
 function getAuthHeader() {
   const token = process.env.LOOP_API_TOKEN;
   if (!token) return null;
-  return { Authorization: `Bearer ${token}` };
+  return { 'x-loop-token': token };
 }
 
 /**
