@@ -1,6 +1,6 @@
 # Stripe Checkout — Choose Plan (EvolveYou-style)
 
-Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then payment with Stripe **Checkout Sessions (custom UI)** and the **Payment Element**. No Stripe-hosted iframe—only your summary and the payment form. No login required. Successful payments are sent to Shopify as draft orders.
+Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then payment with Stripe **Checkout Sessions (custom UI)** and the **Payment Element**. No Stripe-hosted iframe—only your summary and the payment form. No login required. Successful payments are sent to Shopify as draft orders. **Both** the initial purchase and every **recurring** subscription charge (first post-trial charge and each renewal) create a completed order in Shopify.
 
 ## Deploy on Vercel
 
@@ -11,7 +11,7 @@ Two-step checkout on one page: choose plan (Yearly/Monthly, 7-day trial) then pa
    - `STRIPE_PUBLISHABLE_KEY` or `REACT_APP_STRIPE_PUBLISHABLE_KEY` — Stripe publishable key (same page).
    - `STRIPE_PRICE_YEARLY` — Price ID for yearly plan (e.g. `price_1T2jJs3V2tbgr2nYsLkyGNnU`).
    - `STRIPE_PRICE_MONTHLY` — Price ID for monthly plan (from your Platinum Membership product).
-   - `STRIPE_WEBHOOK_SECRET` — From Stripe Dashboard → Webhooks → Add endpoint → select `checkout.session.completed` → use the signing secret.
+   - `STRIPE_WEBHOOK_SECRET` — From Stripe Dashboard → Webhooks → Add endpoint → select `checkout.session.completed` and `invoice.paid` → use the signing secret.
    - `SHOPIFY_ACCESS_TOKEN` — Shopify Admin API access token (e.g. custom app with `write_draft_orders` scope).
    - `SHOPIFY_SHOP_DOMAIN` — Your shop domain (e.g. `your-store.myshopify.com`).
    - Optional: `SHOPIFY_VARIANT_YEARLY`, `SHOPIFY_VARIANT_MONTHLY` — Shopify **variant** IDs so draft orders use your real products. Example: yearly variant `45218342797498`, monthly variant `45163711070394`. If omitted, draft orders use custom line items (title + price from Stripe). Draft orders appear in **Shopify Admin → Orders → Draft orders**.
@@ -48,16 +48,19 @@ If `GA_MEASUREMENT_ID` (or `GOOGLE_ANALYTICS_MEASUREMENT_ID`) is set in Vercel, 
 
 Get your measurement ID from [Google Analytics](https://analytics.google.com) → Admin → Data streams → your web stream → Measurement ID (e.g. `G-XXXXXXXXXX`).
 
-## Webhook (send purchase to Shopify)
+## Webhook (send purchase and recurring orders to Shopify)
 
 After deploy, in **Stripe Dashboard → Developers → Webhooks**, add an endpoint:
 
 - **URL:** `https://<your-vercel-domain>/api/stripe-webhook`
-- **Events:** `checkout.session.completed`
+- **Events:** `checkout.session.completed`, **`invoice.paid`**
 
 Copy the **Signing secret** and set it as `STRIPE_WEBHOOK_SECRET` in Vercel.
 
-When a customer completes checkout, the webhook creates a draft order in Shopify (customer email, line item from plan, and a note with the Stripe session ID). **Set `SHOPIFY_VARIANT_YEARLY` and `SHOPIFY_VARIANT_MONTHLY`** in Vercel so the draft order uses your Shopify product variants; otherwise the draft uses a custom line item. View draft orders in **Shopify Admin → Orders → Draft orders**. For signature verification to work, the endpoint must receive the raw request body. If your stack parses the body by default, you may need to disable body parsing for this route (see [Vercel: raw body](https://vercel.com/guides/how-do-i-get-the-raw-body-of-a-serverless-function)).
+- **Initial purchase:** When a customer completes checkout, the webhook handles `checkout.session.completed` and creates a draft order in Shopify (customer email, line item from plan, note with Stripe session ID and UTM). The draft order is then completed so it appears as a full order.
+- **Recurring charges:** When a subscription renews (or the first charge after trial), Stripe sends `invoice.paid`. The webhook creates a Shopify draft order for that invoice when it is for a subscription, has a positive amount, and `billing_reason` is `subscription_cycle` or `subscription_create`. Recurring orders are tagged in Shopify with `order_type: recurring`, `stripe_invoice_id`, and `stripe_subscription_id` in note_attributes so you can filter and reconcile.
+
+**Set `SHOPIFY_VARIANT_YEARLY` and `SHOPIFY_VARIANT_MONTHLY`** in Vercel so draft orders use your Shopify product variants; otherwise they use a custom line item. View orders in **Shopify Admin → Orders**. For signature verification to work, the endpoint must receive the raw request body. If your stack parses the body by default, you may need to disable body parsing for this route (see [Vercel: raw body](https://vercel.com/guides/how-do-i-get-the-raw-body-of-a-serverless-function)).
 
 ## Optional: Link from Shopify
 
@@ -72,4 +75,4 @@ npx vercel dev
 
 Open the URL shown (e.g. http://localhost:3000). Set the same env vars in `.env` or Vercel CLI.
 
-For local webhook testing: `stripe listen --forward-to localhost:3000/api/stripe-webhook`, then use the CLI’s webhook signing secret as `STRIPE_WEBHOOK_SECRET`, and `stripe trigger checkout.session.completed` to test.
+For local webhook testing: `stripe listen --forward-to localhost:3000/api/stripe-webhook`, then use the CLI’s webhook signing secret as `STRIPE_WEBHOOK_SECRET`. Test initial purchase with `stripe trigger checkout.session.completed` and recurring with `stripe trigger invoice.paid`.

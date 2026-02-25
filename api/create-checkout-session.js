@@ -79,6 +79,7 @@ module.exports = async (req, res) => {
       ],
       subscription_data: {
         trial_period_days: 7,
+        metadata: { plan },
       },
       return_url: returnUrl,
       metadata,

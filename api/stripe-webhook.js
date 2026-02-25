@@ -14,6 +14,48 @@ function getRawBody(req) {
   });
 }
 
+/**
+ * Create a Shopify draft order and complete it.
+ * @param {string} shopUrl - Shop domain without protocol (e.g. your-store.myshopify.com)
+ * @param {string} shopToken - Shopify Admin API access token
+ * @param {object} draftOrderPayload - { line_items, email?, note, note_attributes }
+ * @returns {Promise<{ ok: boolean, error?: string }>}
+ */
+async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrderPayload) {
+  const createUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
+  const body = { draft_order: draftOrderPayload };
+  const shopRes = await fetch(createUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Access-Token': shopToken,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!shopRes.ok) {
+    const text = await shopRes.text();
+    console.error('Shopify draft order failed', shopRes.status, text);
+    return { ok: false, error: text };
+  }
+  const createData = await shopRes.json();
+  const draftOrderId = createData.draft_order?.id;
+  if (draftOrderId) {
+    const completeUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders/${draftOrderId}/complete.json`;
+    const completeRes = await fetch(completeUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': shopToken,
+      },
+    });
+    if (!completeRes.ok) {
+      const text = await completeRes.text();
+      console.error('Shopify complete draft order failed', completeRes.status, text);
+    }
+  }
+  return { ok: true };
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -52,37 +94,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  if (event.type !== 'checkout.session.completed') {
+  if (event.type !== 'checkout.session.completed' && event.type !== 'invoice.paid') {
     res.status(200).json({ received: true });
     return;
   }
 
-  const sessionId = event.data.object.id;
-
-  let session;
-  try {
-    session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ['line_items'],
-    });
-  } catch (err) {
-    console.error('Webhook: failed to retrieve session', sessionId, err.message);
-    res.status(500).json({ error: 'Failed to retrieve session' });
-    return;
-  }
-
-  const email = session.customer_email || session.customer_details?.email || null;
-  const plan = session.metadata?.plan || 'yearly';
-  const amountTotal = session.amount_total != null ? session.amount_total : 0;
-  const currency = (session.currency || 'aud').toLowerCase();
-  const amountFormatted = (amountTotal / 100).toFixed(2);
-
-  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
-  const utm = {};
-  for (const key of utmKeys) {
-    const val = session.metadata?.[key];
-    if (typeof val === 'string' && val.trim()) utm[key] = val.trim();
-  }
-
+  const shopUrl = shopDomain.replace(/^https?:\/\//, '');
   if (!shopDomain || !shopToken) {
     console.warn('Webhook: Shopify not configured, skipping draft order');
     res.status(200).json({ received: true });
@@ -91,93 +108,149 @@ module.exports = async (req, res) => {
 
   const variantYearly = process.env.SHOPIFY_VARIANT_YEARLY;
   const variantMonthly = process.env.SHOPIFY_VARIANT_MONTHLY;
+  const priceYearly = process.env.STRIPE_PRICE_YEARLY;
+  const priceMonthly = process.env.STRIPE_PRICE_MONTHLY;
 
-  let lineItems;
-  if (plan === 'yearly' && variantYearly) {
-    lineItems = [{ variant_id: parseInt(variantYearly, 10), quantity: 1 }];
-  } else if (plan === 'monthly' && variantMonthly) {
-    lineItems = [{ variant_id: parseInt(variantMonthly, 10), quantity: 1 }];
-  } else {
+  function buildLineItems(plan, amountFormatted) {
+    // When using variant_id, pass price so trial (0.00) overrides variant list price
+    if (plan === 'yearly' && variantYearly) {
+      return [{ variant_id: parseInt(variantYearly, 10), quantity: 1, price: amountFormatted }];
+    }
+    if (plan === 'monthly' && variantMonthly) {
+      return [{ variant_id: parseInt(variantMonthly, 10), quantity: 1, price: amountFormatted }];
+    }
     const title =
       plan === 'yearly'
         ? 'Platinum Membership - Yearly'
         : 'Platinum Membership - Monthly';
-    lineItems = [
-      {
-        title,
-        price: amountFormatted,
-        quantity: 1,
-        taxable: false,
-      },
+    return [
+      { title, price: amountFormatted, quantity: 1, taxable: false },
     ];
   }
 
-  const noteAttributes = [
-    { name: 'stripe_session_id', value: sessionId },
-    { name: 'plan', value: plan },
-  ];
-  for (const key of Object.keys(utm)) {
-    noteAttributes.push({ name: key, value: utm[key] });
-  }
-
-  let note = `Stripe session: ${sessionId}. Plan: ${plan}.`;
-  if (Object.keys(utm).length > 0) {
-    const utmLine = Object.entries(utm).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-    note += ` UTM: ${utmLine}`;
-  }
-
-  const draftOrder = {
-    draft_order: {
-      line_items: lineItems,
+  if (event.type === 'checkout.session.completed') {
+    const sessionId = event.data.object.id;
+    let session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['line_items'],
+      });
+    } catch (err) {
+      console.error('Webhook: failed to retrieve session', sessionId, err.message);
+      res.status(500).json({ error: 'Failed to retrieve session' });
+      return;
+    }
+    const email = session.customer_email || session.customer_details?.email || null;
+    const plan = session.metadata?.plan || 'yearly';
+    const amountTotal = session.amount_total != null ? session.amount_total : 0;
+    const amountFormatted = (amountTotal / 100).toFixed(2);
+    const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
+    const utm = {};
+    for (const key of utmKeys) {
+      const val = session.metadata?.[key];
+      if (typeof val === 'string' && val.trim()) utm[key] = val.trim();
+    }
+    const noteAttributes = [
+      { name: 'stripe_session_id', value: sessionId },
+      { name: 'plan', value: plan },
+    ];
+    for (const key of Object.keys(utm)) {
+      noteAttributes.push({ name: key, value: utm[key] });
+    }
+    let note = `Stripe session: ${sessionId}. Plan: ${plan}.`;
+    if (Object.keys(utm).length > 0) {
+      const utmLine = Object.entries(utm).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+      note += ` UTM: ${utmLine}`;
+    }
+    const payload = {
+      line_items: buildLineItems(plan, amountFormatted),
       email: email || undefined,
       note,
       note_attributes: noteAttributes,
-    },
-  };
-
-  const shopUrl = shopDomain.replace(/^https?:\/\//, '');
-  const createUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
-
-  try {
-    const shopRes = await fetch(createUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': shopToken,
-      },
-      body: JSON.stringify(draftOrder),
-    });
-
-    if (!shopRes.ok) {
-      const text = await shopRes.text();
-      console.error('Shopify draft order failed', shopRes.status, text);
-      res.status(500).json({ error: 'Failed to create draft order' });
+    };
+    try {
+      const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
+      if (!result.ok) {
+        res.status(500).json({ error: 'Failed to create draft order' });
+        return;
+      }
+    } catch (err) {
+      console.error('Shopify request error', err.message);
+      res.status(500).json({ error: 'Shopify request failed' });
       return;
     }
-
-    const createData = await shopRes.json();
-    const draftOrderId = createData.draft_order?.id;
-    if (draftOrderId) {
-      const completeUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders/${draftOrderId}/complete.json`;
-      const completeRes = await fetch(completeUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Shopify-Access-Token': shopToken,
-        },
-      });
-      if (!completeRes.ok) {
-        const text = await completeRes.text();
-        console.error('Shopify complete draft order failed', completeRes.status, text);
-      }
-    }
-  } catch (err) {
-    console.error('Shopify request error', err.message);
-    res.status(500).json({ error: 'Shopify request failed' });
+    res.status(200).json({ received: true });
     return;
   }
 
-  res.status(200).json({ received: true });
+  if (event.type === 'invoice.paid') {
+    const invoiceId = event.data.object.id;
+    let invoice;
+    try {
+      invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ['subscription', 'customer'],
+      });
+    } catch (err) {
+      console.error('Webhook: failed to retrieve invoice', invoiceId, err.message);
+      res.status(500).json({ error: 'Failed to retrieve invoice' });
+      return;
+    }
+    if (!invoice.subscription) {
+      res.status(200).json({ received: true });
+      return;
+    }
+    if (invoice.amount_paid == null || invoice.amount_paid <= 0) {
+      res.status(200).json({ received: true });
+      return;
+    }
+    const billingReasons = ['subscription_cycle', 'subscription_create'];
+    if (invoice.billing_reason && !billingReasons.includes(invoice.billing_reason)) {
+      res.status(200).json({ received: true });
+      return;
+    }
+    const subscription =
+      typeof invoice.subscription === 'object'
+        ? invoice.subscription
+        : await stripe.subscriptions.retrieve(invoice.subscription);
+    let plan = subscription.metadata?.plan;
+    if (!plan && subscription.items?.data?.[0]?.price?.id) {
+      const priceId = subscription.items.data[0].price.id;
+      plan = priceId === priceYearly ? 'yearly' : priceId === priceMonthly ? 'monthly' : 'yearly';
+    }
+    if (!plan) plan = 'yearly';
+    const email =
+      invoice.customer_email ||
+      (typeof invoice.customer === 'object' && invoice.customer?.email) ||
+      null;
+    const amountFormatted = ((invoice.amount_paid || 0) / 100).toFixed(2);
+    const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+    const noteAttributes = [
+      { name: 'stripe_invoice_id', value: invoiceId },
+      { name: 'stripe_subscription_id', value: subId || '' },
+      { name: 'plan', value: plan },
+      { name: 'order_type', value: 'recurring' },
+    ];
+    const note = `Recurring subscription order. Invoice: ${invoiceId}. Subscription: ${subId || ''}. Plan: ${plan}.`;
+    const payload = {
+      line_items: buildLineItems(plan, amountFormatted),
+      email: email || undefined,
+      note,
+      note_attributes: noteAttributes,
+    };
+    try {
+      const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
+      if (!result.ok) {
+        res.status(500).json({ error: 'Failed to create draft order' });
+        return;
+      }
+    } catch (err) {
+      console.error('Shopify request error', err.message);
+      res.status(500).json({ error: 'Shopify request failed' });
+      return;
+    }
+    res.status(200).json({ received: true });
+    return;
+  }
 };
 
 // Disable body parsing so we can read the raw stream for Stripe signature verification.
