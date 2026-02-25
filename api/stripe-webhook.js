@@ -74,6 +74,27 @@ async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrder
 }
 
 /**
+ * Get Shopify customer ID from an order (for Loop API - customer must be the order's customer).
+ * @param {string} shopUrl - Shop domain without protocol
+ * @param {string} shopToken - Shopify Admin API access token
+ * @param {string} orderId - Shopify order ID
+ * @returns {Promise<string|null>} - Customer ID or null
+ */
+async function getShopifyCustomerIdFromOrder(shopUrl, shopToken, orderId) {
+  if (!orderId || !orderId.trim()) return null;
+  const url = `https://${shopUrl}/admin/api/2024-04/orders/${orderId}.json`;
+  const res = await fetch(url, {
+    headers: { 'X-Shopify-Access-Token': shopToken },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const order = data.order;
+  if (!order) return null;
+  const id = order.customer_id ?? order.customer?.id ?? null;
+  return id != null ? String(id) : null;
+}
+
+/**
  * Get Shopify customer ID by email (for Loop API customerShopifyId).
  * @param {string} shopUrl - Shop domain without protocol
  * @param {string} shopToken - Shopify Admin API access token
@@ -258,11 +279,15 @@ module.exports = async (req, res) => {
     }
     if (loop.isEnabled() && email && shopifyOrderId) {
       try {
-        const customerId = shopifyCustomerId || await getShopifyCustomerIdByEmail(shopUrl, shopToken, email);
+        // Prefer customer ID from the order (Loop expects the order's customer); fallback to email search
+        const customerId =
+          shopifyCustomerId ||
+          (await getShopifyCustomerIdFromOrder(shopUrl, shopToken, shopifyOrderId)) ||
+          (await getShopifyCustomerIdByEmail(shopUrl, shopToken, email));
         if (customerId) {
           await loop.createSubscription(email, plan, customerId, shopifyOrderId);
         } else {
-          console.warn('Loop: no Shopify customer ID for email, skipping create');
+          console.warn('Loop: no Shopify customer ID for order/email, skipping create');
         }
       } catch (err) {
         console.error('Loop createSubscription error', err.message);
