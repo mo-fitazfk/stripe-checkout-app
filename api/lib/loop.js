@@ -55,6 +55,11 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
     return { ok: false, error: 'No variant ID' };
   }
   const currencyCode = process.env.LOOP_CURRENCY_CODE || 'AUD';
+  const deliveryPrice = Number(process.env.LOOP_DELIVERY_PRICE || 0);
+  if (Number.isNaN(deliveryPrice)) {
+    console.warn('Loop: LOOP_DELIVERY_PRICE must be numeric');
+    return { ok: false, error: 'Invalid LOOP_DELIVERY_PRICE' };
+  }
   // 10 years from now (timeless plan = no real charge)
   const nextBillingDateEpoch = Math.floor(Date.now() / 1000) + 10 * 365.25 * 24 * 60 * 60;
   const tenYearsPolicy = { interval: 'YEAR', intervalCount: 10 };
@@ -74,17 +79,19 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
       currencyCode,
       billingPolicy: tenYearsPolicy,
       deliveryPolicy: tenYearsPolicy,
-      deliveryPrice: 0,
-      delivery_price: 0,
-      shippingLines: { code: null, title: null },
+      deliveryPrice,
+      delivery_price: deliveryPrice,
+      shippingLines: { code: null, title: null, price: deliveryPrice },
+      shipping_lines: { code: null, title: null, price: deliveryPrice },
       lines: [
         {
+          sellingPlanShopifyId: Number(sellingPlanId),
           selling_plan_id: sellingPlanId,
           variantShopifyId: variantIdNum,
           quantity: 1,
           price: 0,
-          deliveryPrice: 0,
-          delivery_price: 0,
+          deliveryPrice,
+          delivery_price: deliveryPrice,
           requiresShipping: false,
         },
       ],
