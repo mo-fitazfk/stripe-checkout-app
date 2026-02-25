@@ -65,12 +65,11 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
   const deliveryPriceCents = Math.round(deliveryPriceParsed * 100);
   // 10 years from now (timeless plan = no real charge)
   const nextBillingDateEpoch = Math.floor(Date.now() / 1000) + 10 * 365.25 * 24 * 60 * 60;
+  // Billing policy for a \"timeless\" 10-year plan. Omit anchors so Shopify/Loop
+  // can choose defaults; sending empty anchors causes \"anchors may not be empty\".
   const tenYearsPolicy = {
     interval: 'YEAR',
     intervalCount: 10,
-    minCycles: null,
-    maxCycles: null,
-    anchors: null,
   };
   try {
     const customerIdNum = Number(shopifyCustomerId);
