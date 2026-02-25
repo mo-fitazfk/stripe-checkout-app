@@ -74,12 +74,15 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
       billingPolicy: tenYearsPolicy,
       deliveryPolicy: tenYearsPolicy,
       deliveryPrice: 0,
+      delivery_price: 0,
       lines: [
         {
           selling_plan_id: sellingPlanId,
           variantShopifyId: variantIdNum,
           quantity: 1,
+          price: 0,
           deliveryPrice: 0,
+          delivery_price: 0,
         },
       ],
     };
