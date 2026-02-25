@@ -18,7 +18,7 @@ function getRawBody(req) {
  * Create a Shopify draft order and complete it.
  * @param {string} shopUrl - Shop domain without protocol (e.g. your-store.myshopify.com)
  * @param {string} shopToken - Shopify Admin API access token
- * @param {object} draftOrderPayload - { line_items, email?, note, note_attributes }
+ * @param {object} draftOrderPayload - { line_items, email?, note, note_attributes?, tags?, source_name? }
  * @returns {Promise<{ ok: boolean, error?: string }>}
  */
 async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrderPayload) {
@@ -66,6 +66,8 @@ module.exports = async (req, res) => {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
   const shopToken = process.env.SHOPIFY_ACCESS_TOKEN;
+  const shopifySourceName = process.env.SHOPIFY_SOURCE_NAME || null;
+  const shopifyOrderTags = process.env.SHOPIFY_ORDER_TAGS || null;
 
   if (!stripeSecretKey || !webhookSecret) {
     console.error('Webhook: missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET');
@@ -173,6 +175,8 @@ module.exports = async (req, res) => {
       note,
       note_attributes: noteAttributes,
     };
+    if (shopifyOrderTags) payload.tags = shopifyOrderTags;
+    if (shopifySourceName) payload.source_name = shopifySourceName;
     try {
       const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
       if (!result.ok) {
@@ -242,6 +246,8 @@ module.exports = async (req, res) => {
       note,
       note_attributes: noteAttributes,
     };
+    if (shopifyOrderTags) payload.tags = shopifyOrderTags;
+    if (shopifySourceName) payload.source_name = shopifySourceName;
     try {
       const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
       if (!result.ok) {
