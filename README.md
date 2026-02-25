@@ -79,7 +79,7 @@ Optional webhook and "manage by email" can be added later without changing this 
 
 When enabled, the webhook creates a **timeless** Loop subscription (no charge in Loop) for each Stripe purchase and cancels it when the customer cancels in Stripe. Use a Loop selling plan set to "deliver every 10 years" (or similar) so Loop never bills.
 
-- **Env vars (only used when `LOOP_SYNC_ENABLED` is set):** `LOOP_SYNC_ENABLED` (set to `true` or `1` to enable; omit or `false` to disable), `LOOP_API_TOKEN` (Loop Merchant API token), `LOOP_SELLING_PLAN_ID` (e.g. `42752` for Platinum 10-year), optional `LOOP_API_BASE_URL`.
+- **Env vars (only used when `LOOP_SYNC_ENABLED` is set):** `LOOP_SYNC_ENABLED` (set to `true` or `1` to enable; omit or `false` to disable), `LOOP_API_TOKEN` (Loop Merchant API token; sent as `x-loop-token` header), `LOOP_SELLING_PLAN_ID` (e.g. `42752` for Platinum 10-year), `LOOP_VARIANT_ID` (Shopify variant ID for the Loop plan line item, e.g. your Platinum product variant), optional `LOOP_CURRENCY_CODE` (default `AUD`), optional `LOOP_API_BASE_URL`. Shopify customer lookup for Loop uses the completed order’s customer when possible; otherwise it searches by email (Shopify scope `read_customers` may be required).
 - **Stripe webhook:** Ensure `customer.subscription.deleted` and `customer.subscription.updated` are selected so cancellations sync to Loop.
 - **To turn off:** Set `LOOP_SYNC_ENABLED` to `false` or remove it in Vercel and redeploy. Edit `api/lib/loop.js` if your Loop API body or cancel flow differs (see help.loopwork.co).
 

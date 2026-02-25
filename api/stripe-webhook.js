@@ -20,7 +20,7 @@ function getRawBody(req) {
  * @param {string} shopUrl - Shop domain without protocol (e.g. your-store.myshopify.com)
  * @param {string} shopToken - Shopify Admin API access token
  * @param {object} draftOrderPayload - { line_items, email?, note, note_attributes?, tags?, source_name? }
- * @returns {Promise<{ ok: boolean, error?: string }>}
+ * @returns {Promise<{ ok: boolean, error?: string, customerId?: string }>}
  */
 async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrderPayload) {
   const createUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
@@ -40,6 +40,7 @@ async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrder
   }
   const createData = await shopRes.json();
   const draftOrderId = createData.draft_order?.id;
+  let customerId = createData.draft_order?.customer_id ?? createData.draft_order?.customer?.id ?? null;
   if (draftOrderId) {
     const completeUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders/${draftOrderId}/complete.json`;
     const completeRes = await fetch(completeUrl, {
@@ -52,9 +53,36 @@ async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrder
     if (!completeRes.ok) {
       const text = await completeRes.text();
       console.error('Shopify complete draft order failed', completeRes.status, text);
+    } else {
+      const completeData = await completeRes.json();
+      const order = completeData.draft_order ?? completeData.order;
+      if (order && (order.customer_id ?? order.customer?.id)) {
+        customerId = order.customer_id ?? order.customer?.id;
+      }
     }
   }
-  return { ok: true };
+  return { ok: true, customerId: customerId != null ? String(customerId) : undefined };
+}
+
+/**
+ * Get Shopify customer ID by email (for Loop API customerShopifyId).
+ * @param {string} shopUrl - Shop domain without protocol
+ * @param {string} shopToken - Shopify Admin API access token
+ * @param {string} email - Customer email
+ * @returns {Promise<string|null>} - Customer ID or null
+ */
+async function getShopifyCustomerIdByEmail(shopUrl, shopToken, email) {
+  if (!email || !email.trim()) return null;
+  const url = `https://${shopUrl}/admin/api/2024-04/customers/search.json?query=${encodeURIComponent('email:' + email.trim())}`;
+  const res = await fetch(url, {
+    headers: { 'X-Shopify-Access-Token': shopToken },
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  const customers = data.customers;
+  if (!Array.isArray(customers) || customers.length === 0) return null;
+  const id = customers[0].id;
+  return id != null ? String(id) : null;
 }
 
 module.exports = async (req, res) => {
@@ -204,12 +232,14 @@ module.exports = async (req, res) => {
     };
     if (shopifyOrderTags) payload.tags = shopifyOrderTags;
     if (shopifySourceName) payload.source_name = shopifySourceName;
+    let shopifyCustomerId = null;
     try {
       const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
       if (!result.ok) {
         res.status(500).json({ error: 'Failed to create draft order' });
         return;
       }
+      shopifyCustomerId = result.customerId;
     } catch (err) {
       console.error('Shopify request error', err.message);
       res.status(500).json({ error: 'Shopify request failed' });
@@ -217,7 +247,12 @@ module.exports = async (req, res) => {
     }
     if (loop.isEnabled() && email) {
       try {
-        await loop.createSubscription(email, plan);
+        const customerId = shopifyCustomerId || await getShopifyCustomerIdByEmail(shopUrl, shopToken, email);
+        if (customerId) {
+          await loop.createSubscription(email, plan, customerId);
+        } else {
+          console.warn('Loop: no Shopify customer ID for email, skipping create');
+        }
       } catch (err) {
         console.error('Loop createSubscription error', err.message);
       }

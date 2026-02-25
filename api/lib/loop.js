@@ -17,17 +17,22 @@ function getAuthHeader() {
 }
 
 /**
- * Create a Loop subscription for the given email (timeless plan, no charge).
+ * Create a Loop subscription for the given Shopify customer (timeless plan, no charge).
  * No-op if LOOP_SYNC_ENABLED is not set. Logs errors; does not throw.
- * @param {string} email - Customer email
- * @param {string} [plan] - Plan name (yearly/monthly) for reference; Loop uses LOOP_SELLING_PLAN_ID
+ * @param {string} email - Customer email (for logging)
+ * @param {string} [plan] - Plan name (yearly/monthly) for reference
+ * @param {string|number} shopifyCustomerId - Shopify customer ID (required by Loop API)
  * @returns {Promise<{ ok: boolean, error?: string }>}
  */
-async function createSubscription(email, plan) {
+async function createSubscription(email, plan, shopifyCustomerId) {
   if (!isEnabled()) return { ok: true };
   if (!email || typeof email !== 'string' || !email.trim()) {
     console.warn('Loop: createSubscription skipped, no email');
     return { ok: false, error: 'No email' };
+  }
+  if (!shopifyCustomerId) {
+    console.warn('Loop: createSubscription skipped, no shopifyCustomerId');
+    return { ok: false, error: 'No Shopify customer ID' };
   }
   const token = getAuthHeader();
   if (!token) {
@@ -39,12 +44,29 @@ async function createSubscription(email, plan) {
     console.warn('Loop: LOOP_SELLING_PLAN_ID not set, skipping create');
     return { ok: false, error: 'No selling plan ID' };
   }
+  const variantId = process.env.LOOP_VARIANT_ID || process.env.LOOP_PRODUCT_VARIANT_ID;
+  if (!variantId) {
+    console.warn('Loop: LOOP_VARIANT_ID not set, skipping create');
+    return { ok: false, error: 'No variant ID' };
+  }
+  const currencyCode = process.env.LOOP_CURRENCY_CODE || 'AUD';
+  // 10 years from now (timeless plan = no real charge)
+  const nextBillingDateEpoch = Math.floor(Date.now() / 1000) + 10 * 365.25 * 24 * 60 * 60;
+  const tenYearsPolicy = { interval: 'YEAR', intervalCount: 10 };
   try {
-    // Loop Merchant API: create subscription. Adjust body to match Loop API docs.
     const body = {
-      customer: { email: email.trim() },
-      selling_plan_id: sellingPlanId,
-      // Add product_id / variant_id here if Loop API requires them (e.g. from env)
+      customerShopifyId: String(shopifyCustomerId),
+      nextBillingDateEpoch,
+      currencyCode,
+      billingPolicy: tenYearsPolicy,
+      deliveryPolicy: tenYearsPolicy,
+      lines: [
+        {
+          selling_plan_id: sellingPlanId,
+          variant_id: String(variantId),
+          quantity: 1,
+        },
+      ],
     };
     const res = await fetch(`${LOOP_BASE}/subscription`, {
       method: 'POST',
