@@ -55,49 +55,70 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
     return { ok: false, error: 'No variant ID' };
   }
   const currencyCode = process.env.LOOP_CURRENCY_CODE || 'AUD';
-  const deliveryPrice = Number(process.env.LOOP_DELIVERY_PRICE || 0);
-  if (Number.isNaN(deliveryPrice)) {
-    console.warn('Loop: LOOP_DELIVERY_PRICE must be numeric');
+  // Interpret LOOP_DELIVERY_PRICE as a decimal amount (e.g. "0.00", "5.00") and convert to integer cents
+  const deliveryPriceAmount = process.env.LOOP_DELIVERY_PRICE || '0';
+  const deliveryPriceParsed = parseFloat(deliveryPriceAmount);
+  if (Number.isNaN(deliveryPriceParsed)) {
+    console.warn('Loop: LOOP_DELIVERY_PRICE must be a decimal number (e.g. \"0.00\", \"5.00\")');
     return { ok: false, error: 'Invalid LOOP_DELIVERY_PRICE' };
   }
+  const deliveryPriceCents = Math.round(deliveryPriceParsed * 100);
   // 10 years from now (timeless plan = no real charge)
   const nextBillingDateEpoch = Math.floor(Date.now() / 1000) + 10 * 365.25 * 24 * 60 * 60;
-  const tenYearsPolicy = { interval: 'YEAR', intervalCount: 10 };
+  const tenYearsPolicy = {
+    interval: 'YEAR',
+    intervalCount: 10,
+    minCycles: null,
+    maxCycles: null,
+    anchors: null,
+  };
   try {
     const customerIdNum = Number(shopifyCustomerId);
     const variantIdNum = Number(variantId);
     const originOrderIdNum = Number(originOrderShopifyId);
-    if (Number.isNaN(customerIdNum) || Number.isNaN(variantIdNum) || Number.isNaN(originOrderIdNum)) {
-      console.warn('Loop: invalid customer, variant, or origin order ID');
+    const sellingPlanIdNum = Number(sellingPlanId);
+    if (
+      Number.isNaN(customerIdNum) ||
+      Number.isNaN(variantIdNum) ||
+      Number.isNaN(originOrderIdNum) ||
+      Number.isNaN(sellingPlanIdNum)
+    ) {
+      console.warn('Loop: invalid customer, variant, selling plan, or origin order ID');
       return { ok: false, error: 'Invalid ID' };
     }
     // Product has no delivery price in Shopify (normal for digital / requires_shipping: false).
-    // Shopify subscription contract still requires a delivery price in the create call; we send 0.
-    // If Loop still returns "Delivery price can't be blank", set the selling plan's delivery/shipping to 0 in Loop admin.
+    // Shopify subscription contract still requires a delivery price in the create call; we send deliveryPriceCents.
+    // Loop maps this onto Shopify's delivery price field.
     const body = {
       customerShopifyId: customerIdNum,
       originOrderShopifyId: originOrderIdNum,
       nextBillingDateEpoch,
       currencyCode,
       billingPolicy: tenYearsPolicy,
-      deliveryPolicy: tenYearsPolicy,
-      deliveryPrice,
-      delivery_price: deliveryPrice,
-      shippingLines: { code: null, title: null, price: deliveryPrice },
-      shipping_lines: { code: null, title: null, price: deliveryPrice },
+      deliveryPolicy: {
+        interval: 'YEAR',
+        intervalCount: 10,
+      },
+      deliveryPrice: deliveryPriceCents,
       lines: [
         {
-          sellingPlanShopifyId: Number(sellingPlanId),
-          selling_plan_id: sellingPlanId,
           variantShopifyId: variantIdNum,
+          sellingPlanShopifyId: sellingPlanIdNum,
           quantity: 1,
-          price: 0,
-          deliveryPrice,
-          delivery_price: deliveryPrice,
+          price: '0.00',
           requiresShipping: false,
         },
       ],
     };
+    if (process.env.LOOP_DEBUG === 'true') {
+      console.log('Loop create payload (sanitized)', {
+        customerShopifyId: customerIdNum,
+        originOrderShopifyId: originOrderIdNum,
+        deliveryPrice: deliveryPriceCents,
+        currencyCode,
+        lineCount: body.lines.length,
+      });
+    }
     const res = await fetch(`${LOOP_BASE}/subscription`, {
       method: 'POST',
       headers: {
