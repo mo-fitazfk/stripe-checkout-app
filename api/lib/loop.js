@@ -71,7 +71,9 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
       console.warn('Loop: invalid customer, variant, or origin order ID');
       return { ok: false, error: 'Invalid ID' };
     }
-    // Match Loop webhook shape: deliveryPrice number, shippingLines null for digital
+    // Product has no delivery price in Shopify (normal for digital / requires_shipping: false).
+    // Shopify subscription contract still requires a delivery price in the create call; we send 0.
+    // If Loop still returns "Delivery price can't be blank", set the selling plan's delivery/shipping to 0 in Loop admin.
     const body = {
       customerShopifyId: customerIdNum,
       originOrderShopifyId: originOrderIdNum,
