@@ -66,6 +66,7 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
       console.warn('Loop: invalid customer, variant, or origin order ID');
       return { ok: false, error: 'Invalid ID' };
     }
+    // Match Loop webhook shape: deliveryPrice number, shippingLines null for digital
     const body = {
       customerShopifyId: customerIdNum,
       originOrderShopifyId: originOrderIdNum,
@@ -75,6 +76,7 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
       deliveryPolicy: tenYearsPolicy,
       deliveryPrice: 0,
       delivery_price: 0,
+      shippingLines: { code: null, title: null },
       lines: [
         {
           selling_plan_id: sellingPlanId,
@@ -83,6 +85,7 @@ async function createSubscription(email, plan, shopifyCustomerId, originOrderSho
           price: 0,
           deliveryPrice: 0,
           delivery_price: 0,
+          requiresShipping: false,
         },
       ],
     };
