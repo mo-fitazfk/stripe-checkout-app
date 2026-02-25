@@ -62,6 +62,15 @@ Copy the **Signing secret** and set it as `STRIPE_WEBHOOK_SECRET` in Vercel.
 
 **Set `SHOPIFY_VARIANT_YEARLY` and `SHOPIFY_VARIANT_MONTHLY`** in Vercel so draft orders use your Shopify product variants; otherwise they use a custom line item. View orders in **Shopify Admin → Orders**. For signature verification to work, the endpoint must receive the raw request body. If your stack parses the body by default, you may need to disable body parsing for this route (see [Vercel: raw body](https://vercel.com/guides/how-do-i-get-the-raw-body-of-a-serverless-function)).
 
+## Manage subscription (Customer Portal)
+
+After a customer completes checkout, the thank-you page shows a **Manage subscription** link. Clicking it sends them to Stripe’s **Customer Billing Portal**, where they can cancel the subscription, update their payment method, or view invoice history. When they click “Return to site” in the portal, they are sent back to your app.
+
+- **Setup:** In **Stripe Dashboard → Settings → Billing → Customer portal**, configure what customers can do (e.g. cancel subscriptions, update payment methods, view invoices) and cancellation behavior (cancel at period end or immediately).
+- **How it works:** The link goes to `/api/create-portal-session?session_id=...` (using the checkout `session_id` from the thank-you URL). The API retrieves the Stripe customer from that session, creates a Billing Portal session, and redirects the customer to Stripe’s portal. No extra env vars are required beyond `STRIPE_SECRET_KEY`. The thank-you page also shows a **Portal link (use anytime)** — the Stripe billing portal login URL — so customers can manage their billing even without the success URL; you can share that link on your site or send it to customers.
+
+Optional webhook and "manage by email" can be added later without changing this flow. Possible enhancements: a “manage by email” flow for returning visitors who no longer have the success URL, or webhook handlers for `customer.subscription.updated` / `customer.subscription.deleted` to sync cancellation status to your iOS app or other systems.
+
 ## Optional: Link from Shopify
 
 Point your Shopify choose-plan page or CTA to your Vercel app URL (e.g. `https://your-app.vercel.app`) so customers use this flow.
