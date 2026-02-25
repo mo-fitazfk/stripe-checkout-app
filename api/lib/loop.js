@@ -22,9 +22,10 @@ function getAuthHeader() {
  * @param {string} email - Customer email (for logging)
  * @param {string} [plan] - Plan name (yearly/monthly) for reference
  * @param {string|number} shopifyCustomerId - Shopify customer ID (required by Loop API)
+ * @param {string|number} [originOrderShopifyId] - Shopify order ID that originated this subscription (required by Loop when no payment method)
  * @returns {Promise<{ ok: boolean, error?: string }>}
  */
-async function createSubscription(email, plan, shopifyCustomerId) {
+async function createSubscription(email, plan, shopifyCustomerId, originOrderShopifyId) {
   if (!isEnabled()) return { ok: true };
   if (!email || typeof email !== 'string' || !email.trim()) {
     console.warn('Loop: createSubscription skipped, no email');
@@ -33,6 +34,10 @@ async function createSubscription(email, plan, shopifyCustomerId) {
   if (!shopifyCustomerId) {
     console.warn('Loop: createSubscription skipped, no shopifyCustomerId');
     return { ok: false, error: 'No Shopify customer ID' };
+  }
+  if (!originOrderShopifyId) {
+    console.warn('Loop: createSubscription skipped, no originOrderShopifyId');
+    return { ok: false, error: 'No origin order ID' };
   }
   const token = getAuthHeader();
   if (!token) {
@@ -56,12 +61,14 @@ async function createSubscription(email, plan, shopifyCustomerId) {
   try {
     const customerIdNum = Number(shopifyCustomerId);
     const variantIdNum = Number(variantId);
-    if (Number.isNaN(customerIdNum) || Number.isNaN(variantIdNum)) {
-      console.warn('Loop: invalid customer or variant ID');
+    const originOrderIdNum = Number(originOrderShopifyId);
+    if (Number.isNaN(customerIdNum) || Number.isNaN(variantIdNum) || Number.isNaN(originOrderIdNum)) {
+      console.warn('Loop: invalid customer, variant, or origin order ID');
       return { ok: false, error: 'Invalid ID' };
     }
     const body = {
       customerShopifyId: customerIdNum,
+      originOrderShopifyId: originOrderIdNum,
       nextBillingDateEpoch,
       currencyCode,
       billingPolicy: tenYearsPolicy,

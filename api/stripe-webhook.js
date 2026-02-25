@@ -20,7 +20,7 @@ function getRawBody(req) {
  * @param {string} shopUrl - Shop domain without protocol (e.g. your-store.myshopify.com)
  * @param {string} shopToken - Shopify Admin API access token
  * @param {object} draftOrderPayload - { line_items, email?, note, note_attributes?, tags?, source_name? }
- * @returns {Promise<{ ok: boolean, error?: string, customerId?: string }>}
+ * @returns {Promise<{ ok: boolean, error?: string, customerId?: string, orderId?: string }>}
  */
 async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrderPayload) {
   const createUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
@@ -41,6 +41,7 @@ async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrder
   const createData = await shopRes.json();
   const draftOrderId = createData.draft_order?.id;
   let customerId = createData.draft_order?.customer_id ?? createData.draft_order?.customer?.id ?? null;
+  let orderId = null;
   if (draftOrderId) {
     const completeUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders/${draftOrderId}/complete.json`;
     const completeRes = await fetch(completeUrl, {
@@ -56,12 +57,20 @@ async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrder
     } else {
       const completeData = await completeRes.json();
       const order = completeData.draft_order ?? completeData.order;
-      if (order && (order.customer_id ?? order.customer?.id)) {
-        customerId = order.customer_id ?? order.customer?.id;
+      if (order) {
+        if (order.order_id != null) orderId = order.order_id;
+        else if (order.id != null && order.status === 'completed') orderId = order.id;
+        if (order.customer_id ?? order.customer?.id) {
+          customerId = order.customer_id ?? order.customer?.id;
+        }
       }
     }
   }
-  return { ok: true, customerId: customerId != null ? String(customerId) : undefined };
+  return {
+    ok: true,
+    customerId: customerId != null ? String(customerId) : undefined,
+    orderId: orderId != null ? String(orderId) : undefined,
+  };
 }
 
 /**
@@ -233,6 +242,7 @@ module.exports = async (req, res) => {
     if (shopifyOrderTags) payload.tags = shopifyOrderTags;
     if (shopifySourceName) payload.source_name = shopifySourceName;
     let shopifyCustomerId = null;
+    let shopifyOrderId = null;
     try {
       const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
       if (!result.ok) {
@@ -240,16 +250,17 @@ module.exports = async (req, res) => {
         return;
       }
       shopifyCustomerId = result.customerId;
+      shopifyOrderId = result.orderId;
     } catch (err) {
       console.error('Shopify request error', err.message);
       res.status(500).json({ error: 'Shopify request failed' });
       return;
     }
-    if (loop.isEnabled() && email) {
+    if (loop.isEnabled() && email && shopifyOrderId) {
       try {
         const customerId = shopifyCustomerId || await getShopifyCustomerIdByEmail(shopUrl, shopToken, email);
         if (customerId) {
-          await loop.createSubscription(email, plan, customerId);
+          await loop.createSubscription(email, plan, customerId, shopifyOrderId);
         } else {
           console.warn('Loop: no Shopify customer ID for email, skipping create');
         }
