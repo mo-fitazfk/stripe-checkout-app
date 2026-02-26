@@ -34,9 +34,29 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const metadata = { plan };
-  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
   const METADATA_VALUE_MAX = 500;
+  const metadata = { plan };
+  if (body.product_id != null && String(body.product_id).trim() !== '') {
+    metadata.product_id = String(body.product_id).trim().slice(0, METADATA_VALUE_MAX);
+  } else {
+    const productIdYearly = process.env.SHOPIFY_PRODUCT_ID_YEARLY;
+    const productIdMonthly = process.env.SHOPIFY_PRODUCT_ID_MONTHLY;
+    const fallbackProductId = plan === 'yearly' ? productIdYearly : productIdMonthly;
+    if (fallbackProductId && String(fallbackProductId).trim() !== '') {
+      metadata.product_id = String(fallbackProductId).trim().slice(0, METADATA_VALUE_MAX);
+    }
+  }
+  if (body.variant_id != null && String(body.variant_id).trim() !== '') {
+    metadata.variant_id = String(body.variant_id).trim().slice(0, METADATA_VALUE_MAX);
+  } else {
+    const variantYearly = process.env.SHOPIFY_VARIANT_YEARLY;
+    const variantMonthly = process.env.SHOPIFY_VARIANT_MONTHLY;
+    const fallbackVariant = plan === 'yearly' ? variantYearly : variantMonthly;
+    if (fallbackVariant && String(fallbackVariant).trim() !== '') {
+      metadata.variant_id = String(fallbackVariant).trim().slice(0, METADATA_VALUE_MAX);
+    }
+  }
+  const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id'];
   for (const key of utmKeys) {
     const val = body[key];
     if (typeof val === 'string' && val.trim()) {
@@ -79,7 +99,11 @@ module.exports = async (req, res) => {
       ],
       subscription_data: {
         trial_period_days: 7,
-        metadata: { plan },
+        metadata: Object.assign(
+          { plan },
+          metadata.product_id != null ? { product_id: metadata.product_id } : {},
+          metadata.variant_id != null ? { variant_id: metadata.variant_id } : {}
+        ),
       },
       return_url: returnUrl,
       metadata,

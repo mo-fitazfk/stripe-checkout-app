@@ -323,13 +323,23 @@
         return out;
       }
 
+      function getProductAndVariantParams() {
+        var params = new URLSearchParams(window.location.search);
+        var out = {};
+        var productId = params.get('product_id');
+        var variantId = params.get('variant_id');
+        if (productId && String(productId).trim()) out.product_id = String(productId).trim();
+        if (variantId && String(variantId).trim()) out.variant_id = String(variantId).trim();
+        return out;
+      }
+
       document.getElementById('continue-btn').addEventListener('click', function(ev) {
         ev.preventDefault();
         ev.stopPropagation();
         var btn = this;
         btn.disabled = true;
         showError('');
-        var payload = Object.assign({ plan: selectedPlan }, getUtmParams());
+        var payload = Object.assign({ plan: selectedPlan }, getProductAndVariantParams(), getUtmParams());
         fetch('/api/create-checkout-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

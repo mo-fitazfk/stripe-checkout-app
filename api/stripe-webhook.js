@@ -198,7 +198,12 @@ module.exports = async (req, res) => {
   const priceYearly = process.env.STRIPE_PRICE_YEARLY;
   const priceMonthly = process.env.STRIPE_PRICE_MONTHLY;
 
-  function buildLineItems(plan, amountFormatted) {
+  function buildLineItems(plan, amountFormatted, metadataVariantId) {
+    // When variant_id came from Stripe metadata (customer's choice), use it for the draft order
+    const variantIdNum = metadataVariantId ? parseInt(metadataVariantId, 10) : NaN;
+    if (metadataVariantId && !Number.isNaN(variantIdNum)) {
+      return [{ variant_id: variantIdNum, quantity: 1 }];
+    }
     // Trial (0.00): use custom line item so Shopify respects the price. REST API "price" is only for custom line items; variant_id uses catalog price.
     const isTrial = amountFormatted === '0.00';
     const title =
@@ -242,20 +247,26 @@ module.exports = async (req, res) => {
       const val = session.metadata?.[key];
       if (typeof val === 'string' && val.trim()) utm[key] = val.trim();
     }
+    const productId = session.metadata?.product_id ?? '';
+    const variantIdMeta = session.metadata?.variant_id ?? '';
     const noteAttributes = [
       { name: 'stripe_session_id', value: sessionId },
       { name: 'plan', value: plan },
     ];
+    if (productId) noteAttributes.push({ name: 'product_id', value: productId });
+    if (variantIdMeta) noteAttributes.push({ name: 'variant_id', value: variantIdMeta });
     for (const key of Object.keys(utm)) {
       noteAttributes.push({ name: key, value: utm[key] });
     }
     let note = `Stripe session: ${sessionId}. Plan: ${plan}.`;
+    if (productId) note += ` Product ID: ${productId}.`;
+    if (variantIdMeta) note += ` Variant ID: ${variantIdMeta}.`;
     if (Object.keys(utm).length > 0) {
       const utmLine = Object.entries(utm).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
       note += ` UTM: ${utmLine}`;
     }
     const payload = {
-      line_items: buildLineItems(plan, amountFormatted),
+      line_items: buildLineItems(plan, amountFormatted, variantIdMeta),
       email: email || undefined,
       note,
       note_attributes: noteAttributes,
