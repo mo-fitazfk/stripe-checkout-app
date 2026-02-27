@@ -258,22 +258,20 @@ module.exports = async (req, res) => {
   const priceYearly = process.env.STRIPE_PRICE_YEARLY;
   const priceMonthly = process.env.STRIPE_PRICE_MONTHLY;
 
-  // Returns line items with price so Shopify receipt shows Stripe price ($0 trial or charged amount). Uses variant when available for exact product.
-  function buildLineItems(plan, amountFormatted, metadataVariantId) {
+  // Line item display names for receipt (custom line items so these exact names show; product_id/variant_id still in note_attributes).
+  const LINE_TITLES = {
+    yearly_trial: 'Platinum Membership Yearly - Free Trial',
+    monthly_trial: 'Platinum Membership Monthly - Free Trial',
+    yearly_paid: 'Platinum Membership Yearly',
+    monthly_paid: 'Platinum Membership Monthly (after trial)',
+  };
+
+  function buildLineItems(plan, amountFormatted, _metadataVariantId) {
+    const isTrial = amountFormatted === '0.00';
     const title =
       plan === 'yearly'
-        ? 'Platinum Membership - Yearly'
-        : 'Platinum Membership - Monthly';
-    const variantIdNum = metadataVariantId ? parseInt(metadataVariantId, 10) : NaN;
-    if (metadataVariantId && !Number.isNaN(variantIdNum)) {
-      return [{ variant_id: variantIdNum, price: amountFormatted, quantity: 1 }];
-    }
-    if (plan === 'yearly' && variantYearly) {
-      return [{ variant_id: parseInt(variantYearly, 10), price: amountFormatted, quantity: 1 }];
-    }
-    if (plan === 'monthly' && variantMonthly) {
-      return [{ variant_id: parseInt(variantMonthly, 10), price: amountFormatted, quantity: 1 }];
-    }
+        ? (isTrial ? LINE_TITLES.yearly_trial : LINE_TITLES.yearly_paid)
+        : (isTrial ? LINE_TITLES.monthly_trial : LINE_TITLES.monthly_paid);
     return [{ title, price: amountFormatted, quantity: 1 }];
   }
 
