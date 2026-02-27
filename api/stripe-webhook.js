@@ -15,57 +15,117 @@ function getRawBody(req) {
   });
 }
 
+const SHOPIFY_GRAPHQL_API_VERSION = '2024-04';
+
 /**
- * Create a Shopify draft order and complete it.
- * @param {string} shopUrl - Shop domain without protocol (e.g. your-store.myshopify.com)
+ * Create a Shopify draft order via GraphQL (supports variant + priceOverride so receipt shows exact product at Stripe price).
+ * @param {string} shopUrl - Shop domain without protocol
  * @param {string} shopToken - Shopify Admin API access token
- * @param {object} draftOrderPayload - { line_items, email?, note, note_attributes?, tags?, source_name? }
- * @returns {Promise<{ ok: boolean, error?: string, customerId?: string, orderId?: string }>}
+ * @param {object} draftOrderPayload - { line_items: [{ variant_id?, title?, price }], email?, note, note_attributes?, tags?, source_name? }
+ * @param {string} currencyCode - e.g. 'AUD'
+ * @returns {Promise<{ ok: boolean, error?: string, customerId?: string, orderId?: string, draftOrderId?: string }>}
  */
-async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrderPayload) {
-  const createUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders.json`;
-  const body = { draft_order: draftOrderPayload };
-  const shopRes = await fetch(createUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': shopToken,
-    },
-    body: JSON.stringify(body),
+async function createShopifyDraftOrderAndComplete(shopUrl, shopToken, draftOrderPayload, currencyCode = 'AUD') {
+  const graphqlUrl = `https://${shopUrl}/admin/api/${SHOPIFY_GRAPHQL_API_VERSION}/graphql.json`;
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Shopify-Access-Token': shopToken,
+  };
+
+  const lineItems = (draftOrderPayload.line_items || []).map((item) => {
+    const priceInput = { amount: String(item.price), currencyCode };
+    if (item.variant_id != null) {
+      return {
+        variantId: `gid://shopify/ProductVariant/${item.variant_id}`,
+        quantity: item.quantity ?? 1,
+        priceOverride: priceInput,
+      };
+    }
+    return {
+      title: item.title || 'Subscription',
+      quantity: item.quantity ?? 1,
+      originalUnitPriceWithCurrency: priceInput,
+    };
   });
-  if (!shopRes.ok) {
-    const text = await shopRes.text();
-    console.error('Shopify draft order failed', shopRes.status, text);
-    return { ok: false, error: text };
-  }
-  const createData = await shopRes.json();
-  const draftOrderId = createData.draft_order?.id;
-  let customerId = createData.draft_order?.customer_id ?? createData.draft_order?.customer?.id ?? null;
-  let orderId = null;
-  if (draftOrderId) {
-    const completeUrl = `https://${shopUrl}/admin/api/2024-04/draft_orders/${draftOrderId}/complete.json`;
-    const completeRes = await fetch(completeUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': shopToken,
-      },
-    });
-    if (!completeRes.ok) {
-      const text = await completeRes.text();
-      console.error('Shopify complete draft order failed', completeRes.status, text);
-    } else {
-      const completeData = await completeRes.json();
-      const order = completeData.draft_order ?? completeData.order;
-      if (order) {
-        if (order.order_id != null) orderId = order.order_id;
-        else if (order.id != null && order.status === 'completed') orderId = order.id;
-        if (order.customer_id ?? order.customer?.id) {
-          customerId = order.customer_id ?? order.customer?.id;
-        }
+
+  const customAttributes = (draftOrderPayload.note_attributes || []).map((attr) => ({
+    key: attr.name,
+    value: String(attr.value),
+  }));
+
+  const tagsInput = draftOrderPayload.tags
+    ? (Array.isArray(draftOrderPayload.tags)
+        ? draftOrderPayload.tags
+        : String(draftOrderPayload.tags).split(',').map((t) => t.trim()).filter(Boolean))
+    : null;
+  const input = {
+    lineItems,
+    email: draftOrderPayload.email || null,
+    note: draftOrderPayload.note || null,
+    customAttributes: customAttributes.length ? customAttributes : null,
+    tags: tagsInput,
+    sourceName: draftOrderPayload.source_name || null,
+  };
+  const createMutation = `
+    mutation draftOrderCreate($input: DraftOrderInput!) {
+      draftOrderCreate(input: $input) {
+        draftOrder { id }
+        userErrors { message field }
       }
     }
+  `;
+  const createRes = await fetch(graphqlUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query: createMutation, variables: { input } }),
+  });
+  if (!createRes.ok) {
+    const text = await createRes.text();
+    console.error('Shopify draft order create failed', createRes.status, text);
+    return { ok: false, error: text };
   }
+  const createJson = await createRes.json();
+  const createData = createJson.data?.draftOrderCreate;
+  const userErrors = createData?.userErrors || [];
+  if (userErrors.length > 0) {
+    const msg = userErrors.map((e) => e.message).join('; ');
+    console.error('Shopify draftOrderCreate userErrors', msg);
+    return { ok: false, error: msg };
+  }
+  const draftOrderGid = createData?.draftOrder?.id;
+  if (!draftOrderGid) {
+    return { ok: false, error: 'No draft order id returned' };
+  }
+
+  const completeMutation = `
+    mutation draftOrderComplete($id: ID!) {
+      draftOrderComplete(id: $id) {
+        draftOrder { id order { id legacyResourceId customer { id legacyResourceId } } }
+        userErrors { message field }
+      }
+    }
+  `;
+  const completeRes = await fetch(graphqlUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query: completeMutation, variables: { id: draftOrderGid } }),
+  });
+  if (!completeRes.ok) {
+    const text = await completeRes.text();
+    console.error('Shopify draft order complete failed', completeRes.status, text);
+    return { ok: false, error: text };
+  }
+  const completeJson = await completeRes.json();
+  const completeData = completeJson.data?.draftOrderComplete;
+  const completeErrors = completeData?.userErrors || [];
+  if (completeErrors.length > 0) {
+    const msg = completeErrors.map((e) => e.message).join('; ');
+    console.error('Shopify draftOrderComplete userErrors', msg);
+    return { ok: false, error: msg };
+  }
+  const order = completeData?.draftOrder?.order;
+  const orderId = order?.legacyResourceId ?? order?.id ?? null;
+  const customerId = order?.customer?.legacyResourceId ?? order?.customer?.id ?? null;
   return {
     ok: true,
     customerId: customerId != null ? String(customerId) : undefined,
@@ -198,31 +258,23 @@ module.exports = async (req, res) => {
   const priceYearly = process.env.STRIPE_PRICE_YEARLY;
   const priceMonthly = process.env.STRIPE_PRICE_MONTHLY;
 
+  // Returns line items with price so Shopify receipt shows Stripe price ($0 trial or charged amount). Uses variant when available for exact product.
   function buildLineItems(plan, amountFormatted, metadataVariantId) {
-    // When variant_id came from Stripe metadata (customer's choice), use it for the draft order
-    const variantIdNum = metadataVariantId ? parseInt(metadataVariantId, 10) : NaN;
-    if (metadataVariantId && !Number.isNaN(variantIdNum)) {
-      return [{ variant_id: variantIdNum, quantity: 1 }];
-    }
-    // Trial (0.00): use custom line item so Shopify respects the price. REST API "price" is only for custom line items; variant_id uses catalog price.
-    const isTrial = amountFormatted === '0.00';
     const title =
       plan === 'yearly'
         ? 'Platinum Membership - Yearly'
         : 'Platinum Membership - Monthly';
-    if (isTrial) {
-      return [{ title, price: '0.00', quantity: 1, taxable: false }];
+    const variantIdNum = metadataVariantId ? parseInt(metadataVariantId, 10) : NaN;
+    if (metadataVariantId && !Number.isNaN(variantIdNum)) {
+      return [{ variant_id: variantIdNum, price: amountFormatted, quantity: 1 }];
     }
-    // Paid: use Shopify variant when configured so the real product appears
     if (plan === 'yearly' && variantYearly) {
-      return [{ variant_id: parseInt(variantYearly, 10), quantity: 1 }];
+      return [{ variant_id: parseInt(variantYearly, 10), price: amountFormatted, quantity: 1 }];
     }
     if (plan === 'monthly' && variantMonthly) {
-      return [{ variant_id: parseInt(variantMonthly, 10), quantity: 1 }];
+      return [{ variant_id: parseInt(variantMonthly, 10), price: amountFormatted, quantity: 1 }];
     }
-    return [
-      { title, price: amountFormatted, quantity: 1, taxable: false },
-    ];
+    return [{ title, price: amountFormatted, quantity: 1 }];
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -273,10 +325,11 @@ module.exports = async (req, res) => {
     };
     if (shopifyOrderTags) payload.tags = shopifyOrderTags;
     if (shopifySourceName) payload.source_name = shopifySourceName;
+    const currencyCode = (session.currency && String(session.currency).toUpperCase()) || 'AUD';
     let shopifyCustomerId = null;
     let shopifyOrderId = null;
     try {
-      const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
+      const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload, currencyCode);
       if (!result.ok) {
         res.status(500).json({ error: 'Failed to create draft order' });
         return;
@@ -349,23 +402,30 @@ module.exports = async (req, res) => {
       null;
     const amountFormatted = ((invoice.amount_paid || 0) / 100).toFixed(2);
     const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id;
+    const productIdSub = subscription.metadata?.product_id ?? '';
+    const variantIdSub = subscription.metadata?.variant_id ?? '';
     const noteAttributes = [
       { name: 'stripe_invoice_id', value: invoiceId },
       { name: 'stripe_subscription_id', value: subId || '' },
       { name: 'plan', value: plan },
       { name: 'order_type', value: 'recurring' },
     ];
+    if (productIdSub) noteAttributes.push({ name: 'product_id', value: productIdSub });
+    if (variantIdSub) noteAttributes.push({ name: 'variant_id', value: variantIdSub });
     const note = `Recurring subscription order. Invoice: ${invoiceId}. Subscription: ${subId || ''}. Plan: ${plan}.`;
+    if (productIdSub) note += ` Product ID: ${productIdSub}.`;
+    if (variantIdSub) note += ` Variant ID: ${variantIdSub}.`;
     const payload = {
-      line_items: buildLineItems(plan, amountFormatted),
+      line_items: buildLineItems(plan, amountFormatted, variantIdSub),
       email: email || undefined,
       note,
       note_attributes: noteAttributes,
     };
     if (shopifyOrderTags) payload.tags = shopifyOrderTags;
     if (shopifySourceName) payload.source_name = shopifySourceName;
+    const currencyCode = (invoice.currency && String(invoice.currency).toUpperCase()) || 'AUD';
     try {
-      const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload);
+      const result = await createShopifyDraftOrderAndComplete(shopUrl, shopToken, payload, currencyCode);
       if (!result.ok) {
         res.status(500).json({ error: 'Failed to create draft order' });
         return;
